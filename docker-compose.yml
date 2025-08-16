@@ -8,8 +8,8 @@ services:
       - /mnt/ssd/filetransfer/db:/app/db
       - /mnt/ssd/filetransfer/uploads:/app/uploads
     ports:
-      # Bind sólo a la interfaz Ethernet (eth0) con IP 192.168.1.102
-      - "192.168.1.102:3456:3000"
+      # Bind sólo a la interfaz Ethernet (eth0) usando la IP definida en .env
+      - "${HOST_IP}:3456:3000"
     environment:
       - PYTHONUNBUFFERED=1
       - FLASK_ENV=production
