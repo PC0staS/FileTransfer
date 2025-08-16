@@ -29,6 +29,7 @@
                     {% endwith %}
 
                     <form action="/login_submit" method="post">
+                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                         <div class="mb-4">
                             <label for="email" class="form-label">
                                 <i class="bi bi-envelope"></i> Email

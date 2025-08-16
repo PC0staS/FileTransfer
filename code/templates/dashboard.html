@@ -143,7 +143,7 @@
                                         <a href="/download/{{ file.name }}" class="btn btn-primary btn-sm">
                                             <i class="bi bi-download"></i>
                                         </a>
-                                        <button class="btn btn-outline-secondary btn-sm" onclick="copyToClipboard('/download/{{ file.name }}', event)">>
+                                        <button class="btn btn-outline-secondary btn-sm" onclick="copyToClipboard('/download/{{ file.name }}', event)">
                                             <i class="bi bi-link-45deg"></i>
                                         </button>
                                         <button class="btn btn-outline-danger btn-sm" onclick="deleteFile('{{ file.name }}', '{{ file.display_name }}')">
@@ -217,7 +217,7 @@
                                             <a href="/download/{{ file.name }}" class="btn btn-primary" title="Descargar">
                                                 <i class="bi bi-download"></i>
                                             </a>
-                                            <button class="btn btn-outline-secondary" onclick="copyToClipboard('/download/{{ file.name }}', event)" title="Copiar enlace">>
+                                            <button class="btn btn-outline-secondary" onclick="copyToClipboard('/download/{{ file.name }}', event)" title="Copiar enlace">
                                                 <i class="bi bi-link-45deg"></i>
                                             </button>
                                             <button class="btn btn-outline-danger" onclick="deleteFile('{{ file.name }}', '{{ file.display_name }}')" title="Eliminar">
@@ -419,10 +419,11 @@ function copyToClipboard(text, event) {
 
 function deleteFile(filename, displayName) {
     if (confirm(`¿Estás seguro de que quieres eliminar "${displayName}"?`)) {
-        fetch('/api/delete_file', {
+    fetch('/api/delete_file', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': window.CSRF_TOKEN || document.querySelector('meta[name="csrf-token"]').content
             },
             body: JSON.stringify({filename: filename})
         })
@@ -530,10 +531,11 @@ function selectAndCopy(inputId) {
 
 function cleanupExpired() {
     if (confirm('¿Quieres limpiar todos los archivos expirados? Esta acción no se puede deshacer.')) {
-        fetch('/api/cleanup_expired', {
+    fetch('/api/cleanup_expired', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': window.CSRF_TOKEN || document.querySelector('meta[name="csrf-token"]').content
             }
         })
         .then(response => response.json())

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Aplicación web moderna con Docker">
     <meta name="author" content="Tu Nombre">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
@@ -17,6 +18,10 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     
     <title>{% block title %}Aplicación Moderna{% endblock %} | Docker App</title>
+    <script>
+        // Exponer token CSRF de forma temprana para scripts inline y externos
+        window.CSRF_TOKEN = "{{ csrf_token }}";
+    </script>
 </head>
 <body>
     <!-- Navbar moderna -->

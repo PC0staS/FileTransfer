@@ -37,6 +37,7 @@
                         <p class="text-muted mb-4">o haz clic para seleccionar archivos</p>
                         
                         <form id="uploadForm" enctype="multipart/form-data" class="d-none">
+                            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                             <input type="file" id="fileInput" name="file" multiple accept="*/*">
                         </form>
                         
@@ -388,6 +389,8 @@ class FileUploader {
                 });
 
                 xhr.open('POST', '/api/upload_progress');
+                // CSRF header
+                try { xhr.setRequestHeader('X-CSRF-Token', window.CSRF_TOKEN); } catch(e) {}
                 xhr.send(formData);
             });
         } catch (error) {
@@ -408,7 +411,7 @@ class FileUploader {
         // Inicializar subida
     const initResp = await fetch('/api/chunk/init', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN },
             body: JSON.stringify({ filename: file.name, total_size: file.size })
         });
         if (!initResp.ok) {
@@ -475,6 +478,7 @@ class FileUploader {
                     }
                 };
                 xhr.open('POST', '/api/chunk/upload');
+                try { xhr.setRequestHeader('X-CSRF-Token', window.CSRF_TOKEN); } catch(e) {}
                 xhr.send(form);
             });
 
@@ -504,7 +508,7 @@ class FileUploader {
         // Finalizar
         const finResp = await fetch('/api/chunk/finalize', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN },
             body: JSON.stringify({ upload_id: uploadId })
         });
         if (!finResp.ok) {

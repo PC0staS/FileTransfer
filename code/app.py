@@ -19,6 +19,14 @@ def main():
     init_db()
     app = Flask(__name__)
 
+    # Seguridad de cookies de sesión
+    # Requiere HTTPS en producción para SESSION_COOKIE_SECURE=True
+    app.config.update({
+        'SESSION_COOKIE_HTTPONLY': True,
+        'SESSION_COOKIE_SECURE': True,
+        'SESSION_COOKIE_SAMESITE': 'Lax'
+    })
+
     setup_logging(app)
     attach_request_logging(app)
 
@@ -64,6 +72,37 @@ def main():
     app.secret_key = secret_key
     from datetime import timedelta
     app.permanent_session_lifetime = timedelta(days=7)
+
+    # ---------------- CSRF Protección simple -----------------
+    import secrets as _secrets
+
+    def _get_csrf_token():
+        token = session.get('_csrf')
+        if not token:
+            token = _secrets.token_hex(16)
+            session['_csrf'] = token
+        return token
+
+    @app.context_processor  # type: ignore[misc]
+    def inject_csrf():
+        return {'csrf_token': _get_csrf_token()}
+
+    @app.before_request  # type: ignore[misc]
+    def csrf_protect():
+        # Métodos que cambian estado
+        if request.method in ('POST', 'PUT', 'PATCH', 'DELETE'):
+            # Permitir endpoints públicos sin estado si se añaden en esta lista
+            exempt = set([])
+            if request.endpoint in exempt:
+                return
+            session_token = session.get('_csrf')
+            supplied = (
+                request.headers.get('X-CSRF-Token')
+                or request.form.get('_csrf')
+                or (request.is_json and isinstance(request.get_json(silent=True), dict) and request.get_json(silent=True).get('_csrf'))
+            )
+            if not session_token or not supplied or supplied != session_token:
+                return ("CSRF token inválido", 400)
 
     @app.route("/")
     def index():

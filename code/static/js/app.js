@@ -1,3 +1,8 @@
+// Helper CSRF
+window.getCsrfToken = function() {
+    return window.CSRF_TOKEN || (document.querySelector('meta[name="csrf-token"]') && document.querySelector('meta[name="csrf-token"]').content);
+};
+
 // Funcionalidad para mostrar/ocultar contraseña
 document.addEventListener('DOMContentLoaded', function() {
     const passwordInput = document.getElementById('password');

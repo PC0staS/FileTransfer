@@ -29,6 +29,7 @@
                     {% endwith %}
 
                     <form action="/register_submit" method="post">
+                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                         <div class="mb-4">
                             <label for="username" class="form-label">
                                 <i class="bi bi-person"></i> Nombre de Usuario

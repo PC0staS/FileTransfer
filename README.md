@@ -171,6 +171,25 @@ Resumen del ciclo:
 5. Descarga: ahora es pública (`/download/<filename>`) busca en el dueño y, si no, en todos los usuarios (salta expirados).
 6. Limpieza: al listar se ejecuta `cleanup_expired_files(user_id)`; opcional endpoint manual `/api/cleanup_expired`.
 
+## Tecnologías usadas
+
+Esta aplicación utiliza las siguientes tecnologías y librerías principales:
+
+- Docker & Docker Compose: contenedorización y orquestación para despliegues reproducibles.
+- Python 3.8+ y Flask: servidor web y lógica del backend.
+- SQLite: almacenamiento embebido para metadatos y usuarios.
+- Bootstrap 5 y Bootstrap Icons: estilos y componentes UI modernos y responsivos.
+- JavaScript (vanilla): lógica cliente para uploads, progreso, toasts y modales.
+- Werkzeug: hashing de contraseñas y utilidades de seguridad.
+
+Medidas de seguridad incluidas por defecto:
+
+- HTTPS: se asume despliegue sobre TLS (recomendado/obligatorio en producción).
+- Protecciones CSRF: token por sesión y verificación en endpoints que cambian estado.
+- Cookies de sesión seguras: HttpOnly, Secure y SameSite configuradas.
+
+Si quieres que liste versiones exactas (p. ej. Flask 2.x) las añadiré automáticamente desde `requirements.txt`.
+
 
 ## 3. Persistencia y volúmenes
 En `docker-compose.yml` ahora se usan variables de entorno para definir los volúmenes:
