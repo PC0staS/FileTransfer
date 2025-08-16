@@ -18,9 +18,19 @@ def init_database():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nombre TEXT NOT NULL,
             email TEXT UNIQUE,
-            password TEXT NOT NULL
+            password TEXT NOT NULL,
+            estado TEXT NOT NULL DEFAULT 'pendiente'
         )
     ''')
+
+    # Migraciones ligeras para versiones anteriores (añadir columna estado si falta)
+    try:
+        cursor.execute("PRAGMA table_info(usuarios)")
+        cols = [r[1] for r in cursor.fetchall()]
+        if 'estado' not in cols:
+            cursor.execute("ALTER TABLE usuarios ADD COLUMN estado TEXT NOT NULL DEFAULT 'pendiente'")
+    except Exception as e:
+        print(f"Aviso migración columna estado: {e}")
     
     conn.commit()
     conn.close()

@@ -39,6 +39,7 @@
 
 ## ✨ Características principales
 - Autenticación básica de usuarios
+- Aprobación manual de nuevos usuarios (estado pendiente -> activo / rechazado)
 - Subida mediante formulario o drag & drop con barra de progreso (AJAX)
 - Soporta cualquier tipo de archivo (sin limitación de extensión ni restricciones de tamaño)
 - Almacenamiento por usuario en `uploads/user_{id}/`
@@ -110,6 +111,9 @@ Rutas y endpoints relevantes
 - `/api/upload_progress` - Endpoint AJAX para subir archivos con progreso
 - `/api/delete_file` - Eliminar archivo (AJAX)
 - `/api/cleanup_expired` - Forzar limpieza de archivos expirados para el usuario actual
+- `/admin/login` - Acceso al panel mínimo de administración
+- `/admin/pending` - Lista usuarios con estado `pendiente`
+- `/admin/approve/<id>/<token>` / `/admin/reject/<id>/<token>` - Acciones recibidas vía correo
 
 Comportamiento de subida
 - Cualquier extensión está permitida. El servidor añade un timestamp al nombre para evitar colisiones.
@@ -292,6 +296,8 @@ Recomendado para usar `https://files.tu-dominio.com` sin abrir puertos.
 
 ## 7. Seguridad y buenas prácticas
 * Cambia el `SECRET_KEY` y mantenlo fuera de Git.
+* Configura variables SMTP para aprobación: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `ADMIN_EMAIL`, `PUBLIC_BASE_URL`.
+* Define `ADMIN_PANEL_PASSWORD` para proteger `/admin/login`.
 * Considera añadir límite de tamaño (middleware) si usuarios externos suben archivos.
 * Añade validación antivirus (ClamAV) si vas a compartir públicamente.
 * Habilita HTTPS siempre (Cloudflare o reverse proxy).
