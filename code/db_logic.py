@@ -112,49 +112,45 @@ def get_all_users(search: str = "", estado_filter: str = "") -> List[Dict]:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        # Base query con LEFT JOIN para contar archivos
-        query = """
-        SELECT u.id, u.nombre, u.email, u.estado, u.fecha_registro,
-               COUNT(CASE WHEN f.user_id IS NOT NULL THEN 1 END) as num_archivos
-        FROM usuarios u
-        LEFT JOIN (
-            SELECT DISTINCT user_id 
-            FROM archivos 
-            WHERE deleted_at IS NULL OR deleted_at = ''
-        ) f ON u.id = f.user_id
-        WHERE 1=1
-        """
-        
+        # Query simplificado - primero obtener usuarios
+        query = "SELECT id, nombre, email, estado, fecha_registro FROM usuarios WHERE 1=1"
         params = []
         
         # Filtros
         if search:
-            query += " AND (u.nombre LIKE ? OR u.email LIKE ?)"
+            query += " AND (nombre LIKE ? OR email LIKE ?)"
             search_param = f"%{search}%"
             params.extend([search_param, search_param])
             
         if estado_filter:
-            query += " AND u.estado = ?"
+            query += " AND estado = ?"
             params.append(estado_filter)
             
-        query += " GROUP BY u.id, u.nombre, u.email, u.estado, u.fecha_registro"
-        query += " ORDER BY u.fecha_registro DESC"
+        query += " ORDER BY fecha_registro DESC"
         
         cursor.execute(query, params)
         rows = cursor.fetchall()
-        conn.close()
         
         users = []
         for row in rows:
+            # Contar archivos para cada usuario (si la tabla existe)
+            try:
+                cursor.execute("SELECT COUNT(*) FROM archivos WHERE user_id = ? AND (deleted_at IS NULL OR deleted_at = '')", (row[0],))
+                num_archivos = cursor.fetchone()[0]
+            except:
+                # Si la tabla archivos no existe, poner 0
+                num_archivos = 0
+                
             users.append({
                 "id": row[0],
                 "nombre": row[1],
                 "email": row[2],
                 "estado": row[3],
                 "fecha_registro": row[4],
-                "num_archivos": row[5]
+                "num_archivos": num_archivos
             })
         
+        conn.close()
         return users
     except Exception as e:
         print(f"Error get_all_users: {e}")
@@ -171,9 +167,12 @@ def get_user_stats() -> Dict[str, int]:
         cursor.execute("SELECT estado, COUNT(*) FROM usuarios GROUP BY estado")
         estado_counts = dict(cursor.fetchall())
         
-        # Total de archivos
-        cursor.execute("SELECT COUNT(*) FROM archivos WHERE deleted_at IS NULL OR deleted_at = ''")
-        total_archivos = cursor.fetchone()[0]
+        # Total de archivos (si la tabla existe)
+        try:
+            cursor.execute("SELECT COUNT(*) FROM archivos WHERE deleted_at IS NULL OR deleted_at = ''")
+            total_archivos = cursor.fetchone()[0]
+        except:
+            total_archivos = 0
         
         conn.close()
         

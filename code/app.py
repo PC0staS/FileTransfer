@@ -359,7 +359,7 @@ def main():
         if expected and pwd == expected:
             session['admin_authed'] = True
             flash('Admin autenticado', 'success')
-            return redirect(url_for('admin_pending'))
+            return redirect(url_for('admin_users'))  # Redirigir a la página principal de usuarios
         flash('Credenciales admin inválidas', 'error')
         return redirect(url_for('admin_login'))
 
