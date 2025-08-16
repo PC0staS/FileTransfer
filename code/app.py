@@ -5,7 +5,7 @@ import json
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file, jsonify  # type: ignore
 from init_db import init_database as init_db
-from db_logic import insert_user, clear_db, check_user_login, get_pending_users, set_user_status, get_user_by_id, get_all_users, get_user_stats, delete_user_completely
+from db_logic import insert_user, clear_db, check_user_login, set_user_status, get_user_by_id, get_all_users, get_user_stats, delete_user_completely
 from logging_config import setup_logging, attach_request_logging # type: ignore
 from werkzeug.security import generate_password_hash  # type: ignore
 from uploads import (
@@ -344,11 +344,9 @@ def main():
         register_failed_login(email) # type: ignore
         return redirect(url_for('login'))
 
-    # --------------------- Admin: aprobación usuarios ---------------------
+    # --------------------- Admin: Una sola página para todo ---------------------
     def is_admin_session():
-        # Sencillo: comparar email almacenado en session (si se desea) o usar variable entorno
-        admin_email = os.environ.get('ADMIN_EMAIL')
-        return session.get('admin_authed') is True or (admin_email and session.get('user_email') == admin_email)
+        return session.get('admin_authed') is True
 
     @app.route('/admin/login', methods=['GET', 'POST'])
     def admin_login():
@@ -358,30 +356,119 @@ def main():
         expected = os.environ.get('ADMIN_PANEL_PASSWORD')
         if expected and pwd == expected:
             session['admin_authed'] = True
-            flash('Admin autenticado', 'success')
-            return redirect(url_for('admin_users'))  # Redirigir a la página principal de usuarios
+            flash('Admin autenticado correctamente', 'success')
+            return redirect(url_for('admin_panel'))
         flash('Credenciales admin inválidas', 'error')
         return redirect(url_for('admin_login'))
 
-    @app.route('/admin/pending')
-    def admin_pending():
+    @app.route('/admin')
+    def admin_panel():
         if not is_admin_session():
             return redirect(url_for('admin_login'))
-        pending = get_pending_users()
-        return render_template('admin_pending.html', users=pending)
+        
+        # Obtener parámetros de filtro
+        search = request.args.get('search', '').strip()
+        estado_filter = request.args.get('estado', '').strip()
+        
+        # Obtener todos los usuarios (con filtros si los hay)
+        users = get_all_users(search=search, estado_filter=estado_filter)
+        
+        # Obtener estadísticas
+        stats = get_user_stats()
+        
+        return render_template('admin.html', users=users, stats=stats)
 
+    @app.route('/admin/change-status', methods=['POST'])
+    def admin_change_user_status():
+        if not is_admin_session():
+            return redirect(url_for('admin_login'))
+        
+        user_id = request.form.get('user_id')
+        new_status = request.form.get('new_status')
+        
+        if not user_id or not new_status:
+            flash('Parámetros inválidos', 'error')
+            return redirect(url_for('admin_panel'))
+        
+        if new_status not in ['activo', 'pendiente', 'rechazado']:
+            flash('Estado inválido', 'error')
+            return redirect(url_for('admin_panel'))
+        
+        try:
+            user_id = int(user_id)
+        except ValueError:
+            flash('ID de usuario inválido', 'error')
+            return redirect(url_for('admin_panel'))
+        
+        # Obtener información del usuario
+        user = get_user_by_id(user_id)
+        if not user:
+            flash('Usuario no encontrado', 'error')
+            return redirect(url_for('admin_panel'))
+        
+        # Verificar si ya tiene ese estado
+        if user['estado'] == new_status:
+            flash(f"El usuario {user['nombre']} ya tiene el estado '{new_status}'", 'error')
+            return redirect(url_for('admin_panel'))
+        
+        # Cambiar estado
+        if set_user_status(user_id, new_status):
+            flash(f"Usuario {user['nombre']} cambiado a '{new_status}' exitosamente", 'success')
+            # Enviar notificación por email
+            try:
+                if new_status == 'activo':
+                    notify_user_status(user_id, 'activo')
+                elif new_status == 'rechazado':
+                    notify_user_status(user_id, 'rechazado')
+            except Exception as e:
+                app.logger.error(f"Fallo notificar usuario: {e}")
+        else:
+            flash(f"Error al cambiar estado de {user['nombre']}", 'error')
+        
+        return redirect(url_for('admin_panel'))
+
+    @app.route('/admin/delete-user', methods=['POST'])
+    def admin_delete_user():
+        if not is_admin_session():
+            return redirect(url_for('admin_login'))
+        
+        user_id = request.form.get('user_id')
+        if not user_id:
+            flash('ID de usuario requerido', 'error')
+            return redirect(url_for('admin_panel'))
+        
+        try:
+            user_id = int(user_id)
+        except ValueError:
+            flash('ID de usuario inválido', 'error')
+            return redirect(url_for('admin_panel'))
+        
+        # Obtener información del usuario antes de eliminarlo
+        user = get_user_by_id(user_id)
+        if not user:
+            flash('Usuario no encontrado', 'error')
+            return redirect(url_for('admin_panel'))
+        
+        # Eliminar usuario
+        if delete_user_completely(user_id):
+            flash(f"Usuario {user['nombre']} eliminado permanentemente", 'success')
+        else:
+            flash(f"Error al eliminar a {user['nombre']}", 'error')
+        
+        return redirect(url_for('admin_panel'))
+
+    # Mantener rutas de aprobación por email (para compatibilidad)
     @app.route('/admin/approve/<int:user_id>/<token>')
     def admin_approve(user_id, token):
         if not verify_action_token('approve', user_id, token):
             return 'Token inválido/expirado', 400
         if not set_user_status(user_id, 'activo'):
             return 'No se pudo activar', 400
-        # Notificar usuario activado (best effort)
         try:
             notify_user_status(user_id, 'activo')
         except Exception as e:
             app.logger.error(f"Fallo notificar usuario activo: {e}")
-        return redirect(url_for('admin_pending'))
+        return '<h2>Usuario aprobado exitosamente</h2><p><a href="/admin">Ir al panel de admin</a></p>'
 
     @app.route('/admin/reject/<int:user_id>/<token>')
     def admin_reject(user_id, token):
@@ -393,91 +480,7 @@ def main():
             notify_user_status(user_id, 'rechazado')
         except Exception as e:
             app.logger.error(f"Fallo notificar usuario rechazado: {e}")
-        return redirect(url_for('admin_pending'))
-
-    @app.route('/admin/users')
-    def admin_users():
-        if not is_admin_session():
-            return redirect(url_for('admin_login'))
-        
-        # Obtener parámetros de filtro (vacíos por defecto para mostrar todos)
-        search = request.args.get('search', '').strip()
-        estado_filter = request.args.get('estado', '').strip()
-        
-        # Si no hay filtros, vaciar estado_filter para mostrar todos
-        if not search and not estado_filter:
-            estado_filter = ""
-        
-        # Obtener usuarios con filtros
-        users = get_all_users(search=search, estado_filter=estado_filter)
-        
-        # Obtener estadísticas
-        stats = get_user_stats()
-        
-        return render_template('admin_users.html', users=users, stats=stats)
-
-    @app.route('/admin/change-status', methods=['POST'])
-    def admin_change_status():
-        if not is_admin_session():
-            return redirect(url_for('admin_login'))
-        
-        user_id = request.form.get('user_id')
-        new_status = request.form.get('new_status')
-        action = request.form.get('action')
-        
-        if not user_id:
-            flash('ID de usuario requerido', 'error')
-            return redirect(url_for('admin_users'))
-        
-        try:
-            user_id = int(user_id)
-        except ValueError:
-            flash('ID de usuario inválido', 'error')
-            return redirect(url_for('admin_users'))
-        
-        # Obtener información del usuario
-        user = get_user_by_id(user_id)
-        if not user:
-            flash('Usuario no encontrado', 'error')
-            return redirect(url_for('admin_users'))
-        
-        success = False
-        message = ""
-        
-        # Manejar acción de eliminación
-        if action == 'delete':
-            success = delete_user_completely(user_id)
-            if success:
-                message = f"Usuario {user['nombre']} eliminado permanentemente"
-            else:
-                message = f"Error al eliminar a {user['nombre']}"
-            flash(message, 'success' if success else 'error')
-            return redirect(url_for('admin_users'))
-        
-        # Manejar cambio de estado
-        if new_status and new_status in ['pendiente', 'activo', 'rechazado']:
-            if user['estado'] == new_status:
-                flash(f"El usuario {user['nombre']} ya tiene el estado '{new_status}'", 'error')
-                return redirect(url_for('admin_users'))
-            
-            success = set_user_status(user_id, new_status)
-            if success:
-                message = f"Usuario {user['nombre']} cambiado a '{new_status}'"
-                # Enviar notificación por email si es apropiado
-                try:
-                    if new_status == 'activo':
-                        notify_user_status(user_id, 'activo')
-                    elif new_status == 'rechazado':
-                        notify_user_status(user_id, 'rechazado')
-                except Exception as e:
-                    app.logger.error(f"Fallo notificar usuario: {e}")
-            else:
-                message = f"Error al cambiar estado de {user['nombre']}"
-        else:
-            message = "Estado no válido"
-        
-        flash(message, 'success' if success else 'error')
-        return redirect(url_for('admin_users'))
+        return '<h2>Usuario rechazado</h2><p><a href="/admin">Ir al panel de admin</a></p>'
 
 
     @app.route("/upload", methods=["GET", "POST"])

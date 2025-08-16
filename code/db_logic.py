@@ -62,19 +62,6 @@ def check_user_login(email: str, password_plain: str) -> Optional[Dict[str, str]
         return None
 
 
-def get_pending_users() -> List[Dict[str, str]]:
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, nombre, email, estado FROM usuarios WHERE estado='pendiente'")
-        rows = cursor.fetchall()
-        conn.close()
-        return [{"id": r[0], "nombre": r[1], "email": r[2], "estado": r[3]} for r in rows]
-    except Exception as e:
-        print(f"Error obteniendo pendientes: {e}")
-        return []
-
-
 def set_user_status(user_id: int, status: str) -> bool:
     if status not in {'activo', 'rechazado', 'pendiente', 'suspendido'}:
         return False
@@ -112,12 +99,12 @@ def get_all_users(search: str = "", estado_filter: str = "") -> List[Dict]:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        # Query base para obtener todos los usuarios
+        # Query base simple
         query = "SELECT id, nombre, email, estado, fecha_registro FROM usuarios"
         params = []
         conditions = []
         
-        # Aplicar filtros solo si están presentes
+        # Aplicar filtros
         if search:
             conditions.append("(nombre LIKE ? OR email LIKE ?)")
             search_param = f"%{search}%"
@@ -127,50 +114,30 @@ def get_all_users(search: str = "", estado_filter: str = "") -> List[Dict]:
             conditions.append("estado = ?")
             params.append(estado_filter)
         
-        # Agregar condiciones WHERE si existen
+        # Agregar WHERE si hay condiciones
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
             
-        query += " ORDER BY fecha_registro DESC"
-        
-        print(f"DEBUG: Query: {query}")
-        print(f"DEBUG: Params: {params}")
+        query += " ORDER BY id DESC"  # Los más recientes primero
         
         cursor.execute(query, params)
         rows = cursor.fetchall()
         
-        print(f"DEBUG: Found {len(rows)} users")
-        
         users = []
         for row in rows:
-            user_data = {
+            users.append({
                 "id": row[0],
                 "nombre": row[1],
                 "email": row[2],
                 "estado": row[3],
-                "fecha_registro": row[4] if row[4] else 'N/A',
-                "num_archivos": 0  # Por defecto 0, luego intentamos contar
-            }
-            
-            # Intentar contar archivos (opcional)
-            try:
-                cursor.execute("SELECT COUNT(*) FROM archivos WHERE user_id = ?", (row[0],))
-                result = cursor.fetchone()
-                user_data["num_archivos"] = result[0] if result else 0
-            except:
-                # Si no existe la tabla archivos, mantener 0
-                pass
-                
-            users.append(user_data)
+                "fecha_registro": row[4] if row[4] else 'N/A'
+            })
         
         conn.close()
-        print(f"DEBUG: Returning {len(users)} users")
         return users
         
     except Exception as e:
-        print(f"ERROR get_all_users: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"Error get_all_users: {e}")
         return []
 
 
