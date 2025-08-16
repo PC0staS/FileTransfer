@@ -6,6 +6,7 @@ import re
 import json
 from datetime import datetime, timedelta
 from flask import flash, session, request, jsonify, send_file # type: ignore
+import logging
 
 # Configuración de uploads
 UPLOAD_FOLDER = '/app/uploads'
@@ -16,6 +17,112 @@ ALLOWED_EXTENSIONS = {
     'mp3', 'mp4', 'avi', 'mov', 'mkv',
     'py', 'js', 'html', 'css', 'json', 'xml'
 }
+
+# ------------------------- Subidas Resumibles (Chunks) -------------------------
+import uuid
+
+CHUNK_THRESHOLD = int(os.environ.get('CHUNK_UPLOAD_THRESHOLD_MB', '200')) * 1024 * 1024  # >200MB usa chunks
+DEFAULT_CHUNK_SIZE = int(os.environ.get('CHUNK_SIZE_MB', '8')) * 1024 * 1024  # 8MB
+
+def _resumable_meta_path(user_id, upload_id):
+    return os.path.join(get_user_upload_dir(user_id), f".upload_{upload_id}.json")
+
+def _temp_file_path(user_id, upload_id):
+    return os.path.join(get_user_upload_dir(user_id), f".upload_{upload_id}.part")
+
+def init_resumable_upload(user_id, original_name, total_size):
+    """Crear/recuperar estado de una subida resumible.
+    Retorna dict con upload_id, received_bytes, chunk_size.
+    """
+    upload_id = uuid.uuid4().hex
+    meta = {
+        'upload_id': upload_id,
+        'original_name': secure_filename(original_name),
+        'display_name': original_name,
+        'total_size': total_size,
+        'received_bytes': 0,
+        'chunk_size': DEFAULT_CHUNK_SIZE,
+        'started_at': datetime.now().isoformat()
+    }
+    with open(_resumable_meta_path(user_id, upload_id), 'w', encoding='utf-8') as f:
+        json.dump(meta, f)
+    return meta
+
+def load_resumable_meta(user_id, upload_id):
+    path = _resumable_meta_path(user_id, upload_id)
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+def save_resumable_meta(user_id, meta):
+    path = _resumable_meta_path(user_id, meta['upload_id'])
+    try:
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(meta, f)
+    except Exception:
+        pass
+
+def append_chunk(user_id, upload_id, chunk_index, chunk_data, total_chunks=None):
+    meta = load_resumable_meta(user_id, upload_id)
+    if not meta:
+        return {'error': 'Upload no encontrada'}, 404
+    temp_path = _temp_file_path(user_id, upload_id)
+
+    # Validar consistencia de tamaño ya recibido vs índice
+    expected_index = meta['received_bytes'] // meta['chunk_size']
+    if chunk_index != expected_index:
+        return {
+            'error': 'Índice de chunk inesperado',
+            'expected_index': expected_index,
+            'received_bytes': meta['received_bytes']
+        }, 409
+
+    with open(temp_path, 'ab') as f:
+        f.write(chunk_data)
+    meta['received_bytes'] += len(chunk_data)
+    save_resumable_meta(user_id, meta)
+
+    completed = meta['received_bytes'] >= meta['total_size']
+    return {
+        'success': True,
+        'received_bytes': meta['received_bytes'],
+        'completed': completed,
+        'total_size': meta['total_size']
+    }, 200
+
+def finalize_resumable_upload(user_id, upload_id):
+    meta = load_resumable_meta(user_id, upload_id)
+    if not meta:
+        return {'error': 'Upload no encontrada'}, 404
+    if meta['received_bytes'] < meta['total_size']:
+        return {'error': 'Upload incompleta'}, 400
+    temp_path = _temp_file_path(user_id, upload_id)
+    if not os.path.exists(temp_path):
+        return {'error': 'Archivo temporal no encontrado'}, 404
+
+    # Renombrar a nombre final con timestamp
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
+    final_name = timestamp + meta['original_name']
+    final_path = os.path.join(get_user_upload_dir(user_id), final_name)
+    os.replace(temp_path, final_path)
+    save_file_metadata(user_id, final_name, meta['display_name'])
+
+    # Limpiar metadata
+    try:
+        os.remove(_resumable_meta_path(user_id, upload_id))
+    except Exception:
+        pass
+
+    return {
+        'success': True,
+        'filename': final_name,
+        'size': format_file_size(meta['total_size']),
+        'message': f'Archivo "{meta["display_name"]}" subido exitosamente (chunked).'
+    }, 200
 
 def secure_filename(filename):
     """Función para asegurar nombres de archivo"""
@@ -254,6 +361,8 @@ def handle_file_upload(file, user_id):
 
         # Escritura por chunks
         total_written = 0
+        logger = logging.getLogger('uploads')
+        logger.info("[upload] start user=%s original='%s' target='%s' max_size=%s", user_id, original_filename, filename, format_file_size(max_size) if max_size else 'None')
         chunk_size = 8 * 1024 * 1024  # 8MB
         stream = file.stream  # werkzeug FileStorage stream
         with open(file_path, 'wb') as f:
@@ -263,13 +372,21 @@ def handle_file_upload(file, user_id):
                     break
                 f.write(chunk)
                 total_written += len(chunk)
+                # Log cada ~512MB para no saturar
+                if total_written % (512 * 1024 * 1024) < chunk_size:
+                    logger.info("[upload] progress user=%s file='%s' written=%s", user_id, filename, format_file_size(total_written))
                 if max_size and total_written > max_size:
                     f.close()
-                    os.remove(file_path)
-                    return {'error': f'Tamaño excede el máximo permitido ({format_file_size(max_size)})'}, 400
+                    try:
+                        os.remove(file_path)
+                    except Exception:
+                        pass
+                    logger.warning("[upload] aborted user=%s file='%s' reason=max_size_exceeded written=%s limit=%s", user_id, filename, total_written, max_size)
+                    return {'error': f'Tamaño excede el máximo permitido ({format_file_size(max_size)})', 'error_code': 'MAX_SIZE_EXCEEDED'}, 400
 
         # Guardar metadatos
         save_file_metadata(user_id, filename, original_filename)
+        logger.info("[upload] complete user=%s file='%s' size=%s", user_id, filename, format_file_size(total_written))
 
         return {
             'success': True,
@@ -284,6 +401,7 @@ def handle_file_upload(file, user_id):
                 os.remove(file_path)
             except Exception:
                 pass
+        logging.getLogger('uploads').exception(f"[upload] failure user={user_id} original='{getattr(file,'filename',None)}' err={e}")
         return {'error': f'Error al subir el archivo: {str(e)}'}, 500
 
 def handle_file_download(filename, user_id):

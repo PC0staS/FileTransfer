@@ -150,6 +150,7 @@
 class FileUploader {
     constructor() {
         this.selectedFiles = new Map();
+    this.chunkThreshold = 200 * 1024 * 1024; // 200MB
         this.initializeElements();
         this.bindEvents();
     }
@@ -320,6 +321,11 @@ class FileUploader {
         let lastLoaded = 0;
         let lastTime = startTime;
 
+        // Decidir si usar chunked
+        if (file.size > this.chunkThreshold) {
+            return await this.uploadFileChunked(file, fileItem, { progressBar, statusLine, percentEl, speedEl, etaEl });
+        }
+
         try {
             const xhr = new XMLHttpRequest();
             
@@ -395,6 +401,88 @@ class FileUploader {
             this.showFileError(fileItem, error.message);
             return false;
         }
+    }
+
+    async uploadFileChunked(file, fileItem, helpers) {
+        const { progressBar, statusLine, percentEl, speedEl, etaEl } = helpers;
+        const startTime = performance.now();
+        const chunkSize = 8 * 1024 * 1024; // debe coincidir con backend DEFAULT_CHUNK_SIZE si no se recibe
+        let uploadId = null;
+        let sentBytes = 0;
+        let chunkIndex = 0;
+
+        // Inicializar subida
+        const initResp = await fetch('/api/chunk/init', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename: file.name, total_size: file.size })
+        });
+        if (!initResp.ok) {
+            this.showFileError(fileItem, 'Error iniciando subida');
+            return false;
+        }
+        const initData = await initResp.json();
+        uploadId = initData.upload_id;
+        const serverChunkSize = initData.chunk_size || chunkSize;
+
+        while (sentBytes < file.size) {
+            const end = Math.min(sentBytes + serverChunkSize, file.size);
+            const blob = file.slice(sentBytes, end);
+            const form = new FormData();
+            form.append('upload_id', uploadId);
+            form.append('chunk_index', chunkIndex.toString());
+            form.append('chunk', blob);
+
+            const t0 = performance.now();
+            const resp = await fetch('/api/chunk/upload', { method: 'POST', body: form });
+            const t1 = performance.now();
+            if (!resp.ok) {
+                const err = await resp.json().catch(()=>({error:'Error chunk'}));
+                this.showFileError(fileItem, err.error || 'Error chunk');
+                return false;
+            }
+            const data = await resp.json();
+            if (!data.success) {
+                this.showFileError(fileItem, data.error || 'Fallo chunk');
+                return false;
+            }
+            sentBytes = data.received_bytes;
+            chunkIndex++;
+            const percent = (sentBytes / file.size) * 100;
+            progressBar.style.width = percent + '%';
+            if (percentEl) percentEl.textContent = percent.toFixed(1) + '%';
+
+            // Velocidad instantánea por chunk
+            const elapsedChunk = (t1 - t0) / 1000;
+            const chunkSpeed = blob.size / (elapsedChunk || 1);
+            // Velocidad media
+            const totalElapsed = (performance.now() - startTime) / 1000;
+            const avgSpeed = sentBytes / (totalElapsed || 1);
+            if (speedEl) speedEl.textContent = this.formatSpeed(chunkSpeed) + ' / ' + this.formatSpeed(avgSpeed) + ' avg';
+            const remaining = file.size - sentBytes;
+            if (etaEl) etaEl.textContent = 'ETA ' + this.formatETA(remaining / (avgSpeed || 1));
+        }
+
+        // Finalizar
+        const finResp = await fetch('/api/chunk/finalize', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ upload_id: uploadId })
+        });
+        if (!finResp.ok) {
+            this.showFileError(fileItem, 'Error finalizando');
+            return false;
+        }
+        const finData = await finResp.json();
+        if (!finData.success) {
+            this.showFileError(fileItem, finData.error || 'Fallo finalize');
+            return false;
+        }
+        const totalElapsedSec = (performance.now() - startTime) / 1000;
+        if (etaEl) etaEl.textContent = 'Completado en ' + totalElapsedSec.toFixed(2) + 's';
+        progressBar.style.background = 'linear-gradient(90deg, #28a745, #20c997)';
+        fileItem.classList.add('border-success');
+        return true;
     }
 
     showFileError(fileItem, error) {

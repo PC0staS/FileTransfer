@@ -207,6 +207,53 @@ def main():
         
         return jsonify(result), status_code
 
+    # -------------------- Subidas resumibles (chunked) --------------------
+    @app.route('/api/chunk/init', methods=['POST'])
+    def chunk_init():
+        if 'user_id' not in session:
+            return jsonify({'error': 'No autorizado'}), 401
+        data = request.get_json(silent=True) or {}
+        original_name = data.get('filename')
+        total_size = data.get('total_size')
+        if not original_name or not isinstance(total_size, int):
+            return jsonify({'error': 'Datos inválidos'}), 400
+        from uploads import init_resumable_upload  # type: ignore
+        meta = init_resumable_upload(session['user_id'], original_name, total_size)
+        return jsonify({
+            'success': True,
+            'upload_id': meta['upload_id'],
+            'chunk_size': meta['chunk_size']
+        }), 200
+
+    @app.route('/api/chunk/upload', methods=['POST'])
+    def chunk_upload():
+        if 'user_id' not in session:
+            return jsonify({'error': 'No autorizado'}), 401
+        upload_id = request.form.get('upload_id')
+        try:
+            chunk_index = int(request.form.get('chunk_index', -1))
+        except ValueError:
+            return jsonify({'error': 'chunk_index inválido'}), 400
+        chunk = request.files.get('chunk')
+        if not upload_id or chunk_index < 0 or not chunk:
+            return jsonify({'error': 'Parámetros incompletos'}), 400
+        from uploads import append_chunk  # type: ignore
+        data = chunk.read()
+        result, code = append_chunk(session['user_id'], upload_id, chunk_index, data)
+        return jsonify(result), code
+
+    @app.route('/api/chunk/finalize', methods=['POST'])
+    def chunk_finalize():
+        if 'user_id' not in session:
+            return jsonify({'error': 'No autorizado'}), 401
+        data = request.get_json(silent=True) or {}
+        upload_id = data.get('upload_id')
+        if not upload_id:
+            return jsonify({'error': 'upload_id requerido'}), 400
+        from uploads import finalize_resumable_upload  # type: ignore
+        result, code = finalize_resumable_upload(session['user_id'], upload_id)
+        return jsonify(result), code
+
     @app.route("/api/delete_file", methods=["POST"])
     def delete_file():
         """Endpoint para eliminar archivos vía AJAX"""
