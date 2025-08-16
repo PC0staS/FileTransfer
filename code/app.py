@@ -418,10 +418,11 @@ def main():
             return redirect(url_for('admin_login'))
         
         user_id = request.form.get('user_id')
+        new_status = request.form.get('new_status')
         action = request.form.get('action')
         
-        if not user_id or not action:
-            flash('Parámetros inválidos', 'error')
+        if not user_id:
+            flash('ID de usuario requerido', 'error')
             return redirect(url_for('admin_users'))
         
         try:
@@ -439,54 +440,37 @@ def main():
         success = False
         message = ""
         
-        if action == 'approve':
-            success = set_user_status(user_id, 'activo')
-            if success:
-                message = f"Usuario {user['nombre']} aprobado"
-                try:
-                    notify_user_status(user_id, 'activo')
-                except Exception as e:
-                    app.logger.error(f"Fallo notificar usuario activo: {e}")
-            else:
-                message = f"Error al aprobar a {user['nombre']}"
-                
-        elif action == 'reject':
-            success = set_user_status(user_id, 'rechazado') 
-            if success:
-                message = f"Usuario {user['nombre']} rechazado"
-                try:
-                    notify_user_status(user_id, 'rechazado')
-                except Exception as e:
-                    app.logger.error(f"Fallo notificar usuario rechazado: {e}")
-            else:
-                message = f"Error al rechazar a {user['nombre']}"
-                
-        elif action == 'suspend':
-            success = set_user_status(user_id, 'rechazado')  # Suspender = rechazar temporalmente
-            if success:
-                message = f"Usuario {user['nombre']} suspendido"
-            else:
-                message = f"Error al suspender a {user['nombre']}"
-                
-        elif action == 'reactivate':
-            success = set_user_status(user_id, 'activo')
-            if success:
-                message = f"Usuario {user['nombre']} reactivado"
-                try:
-                    notify_user_status(user_id, 'activo')
-                except Exception as e:
-                    app.logger.error(f"Fallo notificar usuario reactivado: {e}")
-            else:
-                message = f"Error al reactivar a {user['nombre']}"
-                
-        elif action == 'delete':
+        # Manejar acción de eliminación
+        if action == 'delete':
             success = delete_user_completely(user_id)
             if success:
                 message = f"Usuario {user['nombre']} eliminado permanentemente"
             else:
                 message = f"Error al eliminar a {user['nombre']}"
+            flash(message, 'success' if success else 'error')
+            return redirect(url_for('admin_users'))
+        
+        # Manejar cambio de estado
+        if new_status and new_status in ['pendiente', 'activo', 'rechazado']:
+            if user['estado'] == new_status:
+                flash(f"El usuario {user['nombre']} ya tiene el estado '{new_status}'", 'error')
+                return redirect(url_for('admin_users'))
+            
+            success = set_user_status(user_id, new_status)
+            if success:
+                message = f"Usuario {user['nombre']} cambiado a '{new_status}'"
+                # Enviar notificación por email si es apropiado
+                try:
+                    if new_status == 'activo':
+                        notify_user_status(user_id, 'activo')
+                    elif new_status == 'rechazado':
+                        notify_user_status(user_id, 'rechazado')
+                except Exception as e:
+                    app.logger.error(f"Fallo notificar usuario: {e}")
+            else:
+                message = f"Error al cambiar estado de {user['nombre']}"
         else:
-            message = "Acción no válida"
+            message = "Estado no válido"
         
         flash(message, 'success' if success else 'error')
         return redirect(url_for('admin_users'))

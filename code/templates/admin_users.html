@@ -118,58 +118,30 @@
                                             <span class="badge bg-info">{{ user.num_archivos or 0 }}</span>
                                         </td>
                                         <td>
-                                            <div class="btn-group btn-group-sm">
-                                                {% if user.estado == 'pendiente' %}
-                                                    <form method="post" action="{{ url_for('admin_change_status') }}" class="d-inline">
-                                                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-                                                        <input type="hidden" name="user_id" value="{{ user.id }}">
-                                                        <input type="hidden" name="action" value="approve">
-                                                        <button type="submit" class="btn btn-success btn-sm" 
-                                                                onclick="return confirm('¿Aprobar a {{ user.nombre }}?')">
-                                                            <i class="fas fa-check"></i> Aprobar
-                                                        </button>
-                                                    </form>
-                                                    <form method="post" action="{{ url_for('admin_change_status') }}" class="d-inline">
-                                                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-                                                        <input type="hidden" name="user_id" value="{{ user.id }}">
-                                                        <input type="hidden" name="action" value="reject">
-                                                        <button type="submit" class="btn btn-danger btn-sm" 
-                                                                onclick="return confirm('¿Rechazar a {{ user.nombre }}?')">
-                                                            <i class="fas fa-times"></i> Rechazar
-                                                        </button>
-                                                    </form>
-                                                {% elif user.estado == 'activo' %}
-                                                    <form method="post" action="{{ url_for('admin_change_status') }}" class="d-inline">
-                                                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-                                                        <input type="hidden" name="user_id" value="{{ user.id }}">
-                                                        <input type="hidden" name="action" value="suspend">
-                                                        <button type="submit" class="btn btn-warning btn-sm" 
-                                                                onclick="return confirm('¿Suspender a {{ user.nombre }}?')">
-                                                            <i class="fas fa-pause"></i> Suspender
-                                                        </button>
-                                                    </form>
-                                                {% elif user.estado == 'rechazado' %}
-                                                    <form method="post" action="{{ url_for('admin_change_status') }}" class="d-inline">
-                                                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-                                                        <input type="hidden" name="user_id" value="{{ user.id }}">
-                                                        <input type="hidden" name="action" value="reactivate">
-                                                        <button type="submit" class="btn btn-success btn-sm" 
-                                                                onclick="return confirm('¿Reactivar a {{ user.nombre }}?')">
-                                                            <i class="fas fa-undo"></i> Reactivar
-                                                        </button>
-                                                    </form>
-                                                {% endif %}
-                                                
-                                                <form method="post" action="{{ url_for('admin_change_status') }}" class="d-inline">
-                                                    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-                                                    <input type="hidden" name="user_id" value="{{ user.id }}">
-                                                    <input type="hidden" name="action" value="delete">
-                                                    <button type="submit" class="btn btn-outline-danger btn-sm" 
-                                                            onclick="return confirm('¿ELIMINAR PERMANENTEMENTE a {{ user.nombre }} y todos sus archivos? Esta acción no se puede deshacer.')">
-                                                        <i class="fas fa-trash"></i> Eliminar
+                                            <form method="post" action="{{ url_for('admin_change_status') }}" class="d-inline">
+                                                <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <select name="new_status" class="form-select form-select-sm" style="width: 120px;">
+                                                        <option value="pendiente" {{ 'selected' if user.estado == 'pendiente' else '' }}>Pendiente</option>
+                                                        <option value="activo" {{ 'selected' if user.estado == 'activo' else '' }}>Activo</option>
+                                                        <option value="rechazado" {{ 'selected' if user.estado == 'rechazado' else '' }}>Rechazado</option>
+                                                    </select>
+                                                    <button type="submit" class="btn btn-primary btn-sm" 
+                                                            onclick="return confirm('¿Cambiar estado de {{ user.nombre }}?')">
+                                                        <i class="fas fa-save"></i> Cambiar
                                                     </button>
-                                                </form>
-                                            </div>
+                                                </div>
+                                            </form>
+                                            <form method="post" action="{{ url_for('admin_change_status') }}" class="d-inline mt-1">
+                                                <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                                <input type="hidden" name="action" value="delete">
+                                                <button type="submit" class="btn btn-outline-danger btn-sm" 
+                                                        onclick="return confirm('¿ELIMINAR PERMANENTEMENTE a {{ user.nombre }} y todos sus archivos? Esta acción no se puede deshacer.')">
+                                                    <i class="fas fa-trash"></i> Eliminar
+                                                </button>
+                                            </form>
                                         </td>
                                     </tr>
                                     {% endfor %}
