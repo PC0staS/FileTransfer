@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block title %}Panel de Administración - Usuarios{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-users"></i> Gestión de Usuarios</h2>
+                <div>
+                    <a href="{{ url_for('admin_pending') }}" class="btn btn-warning">
+                        <i class="fas fa-clock"></i> Solo Pendientes
+                    </a>
+                    <a href="{{ url_for('logout') }}" class="btn btn-secondary">
+                        <i class="fas fa-sign-out-alt"></i> Cerrar Sesión Admin
+                    </a>
+                </div>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Filtros -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="estado" class="form-label">Estado:</label>
+                            <select name="estado" id="estado" class="form-select">
+                                <option value="">Todos</option>
+                                <option value="pendiente" {{ 'selected' if request.args.get('estado') == 'pendiente' }}>Pendiente</option>
+                                <option value="activo" {{ 'selected' if request.args.get('estado') == 'activo' }}>Activo</option>
+                                <option value="rechazado" {{ 'selected' if request.args.get('estado') == 'rechazado' }}>Rechazado</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="search" class="form-label">Buscar por nombre o email:</label>
+                            <input type="text" name="search" id="search" class="form-control" 
+                                   value="{{ request.args.get('search', '') }}" placeholder="Nombre o email...">
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary me-2">
+                                <i class="fas fa-search"></i> Filtrar
+                            </button>
+                            <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i> Limpiar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tabla de usuarios -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list"></i> Lista de Usuarios 
+                        <span class="badge bg-primary">{{ users|length }}</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if users %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Nombre</th>
+                                        <th>Email</th>
+                                        <th>Estado</th>
+                                        <th>Fecha Registro</th>
+                                        <th>Archivos</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user in users %}
+                                    <tr>
+                                        <td>{{ user.id }}</td>
+                                        <td>
+                                            <strong>{{ user.nombre }}</strong>
+                                        </td>
+                                        <td>
+                                            <span class="text-muted">{{ user.email }}</span>
+                                        </td>
+                                        <td>
+                                            {% if user.estado == 'activo' %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check"></i> Activo
+                                                </span>
+                                            {% elif user.estado == 'pendiente' %}
+                                                <span class="badge bg-warning">
+                                                    <i class="fas fa-clock"></i> Pendiente
+                                                </span>
+                                            {% elif user.estado == 'rechazado' %}
+                                                <span class="badge bg-danger">
+                                                    <i class="fas fa-times"></i> Rechazado
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ user.estado }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">
+                                                {{ user.fecha_registro or 'N/A' }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ user.num_archivos or 0 }}</span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                {% if user.estado == 'pendiente' %}
+                                                    <form method="post" action="{{ url_for('admin_change_status') }}" class="d-inline">
+                                                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                                                        <input type="hidden" name="user_id" value="{{ user.id }}">
+                                                        <input type="hidden" name="action" value="approve">
+                                                        <button type="submit" class="btn btn-success btn-sm" 
+                                                                onclick="return confirm('¿Aprobar a {{ user.nombre }}?')">
+                                                            <i class="fas fa-check"></i> Aprobar
+                                                        </button>
+                                                    </form>
+                                                    <form method="post" action="{{ url_for('admin_change_status') }}" class="d-inline">
+                                                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                                                        <input type="hidden" name="user_id" value="{{ user.id }}">
+                                                        <input type="hidden" name="action" value="reject">
+                                                        <button type="submit" class="btn btn-danger btn-sm" 
+                                                                onclick="return confirm('¿Rechazar a {{ user.nombre }}?')">
+                                                            <i class="fas fa-times"></i> Rechazar
+                                                        </button>
+                                                    </form>
+                                                {% elif user.estado == 'activo' %}
+                                                    <form method="post" action="{{ url_for('admin_change_status') }}" class="d-inline">
+                                                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                                                        <input type="hidden" name="user_id" value="{{ user.id }}">
+                                                        <input type="hidden" name="action" value="suspend">
+                                                        <button type="submit" class="btn btn-warning btn-sm" 
+                                                                onclick="return confirm('¿Suspender a {{ user.nombre }}?')">
+                                                            <i class="fas fa-pause"></i> Suspender
+                                                        </button>
+                                                    </form>
+                                                {% elif user.estado == 'rechazado' %}
+                                                    <form method="post" action="{{ url_for('admin_change_status') }}" class="d-inline">
+                                                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                                                        <input type="hidden" name="user_id" value="{{ user.id }}">
+                                                        <input type="hidden" name="action" value="reactivate">
+                                                        <button type="submit" class="btn btn-success btn-sm" 
+                                                                onclick="return confirm('¿Reactivar a {{ user.nombre }}?')">
+                                                            <i class="fas fa-undo"></i> Reactivar
+                                                        </button>
+                                                    </form>
+                                                {% endif %}
+                                                
+                                                <form method="post" action="{{ url_for('admin_change_status') }}" class="d-inline">
+                                                    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                                                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                                                    <input type="hidden" name="action" value="delete">
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm" 
+                                                            onclick="return confirm('¿ELIMINAR PERMANENTEMENTE a {{ user.nombre }} y todos sus archivos? Esta acción no se puede deshacer.')">
+                                                        <i class="fas fa-trash"></i> Eliminar
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No se encontraron usuarios con los filtros aplicados.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Estadísticas rápidas -->
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body text-center">
+                            <h3>{{ stats.activos }}</h3>
+                            <p class="mb-0">Usuarios Activos</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body text-center">
+                            <h3>{{ stats.pendientes }}</h3>
+                            <p class="mb-0">Pendientes</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-danger text-white">
+                        <div class="card-body text-center">
+                            <h3>{{ stats.rechazados }}</h3>
+                            <p class="mb-0">Rechazados</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body text-center">
+                            <h3>{{ stats.total_archivos }}</h3>
+                            <p class="mb-0">Total Archivos</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

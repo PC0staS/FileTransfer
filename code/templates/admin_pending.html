@@ -2,7 +2,17 @@
 {% block title %}Usuarios pendientes{% endblock %}
 {% block content %}
 <div class="container mt-4">
-  <h2>Usuarios pendientes</h2>
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Usuarios pendientes</h2>
+    <div>
+      <a href="{{ url_for('admin_users') }}" class="btn btn-primary">
+        <i class="fas fa-users"></i> Gestionar Todos los Usuarios
+      </a>
+      <a href="{{ url_for('logout') }}" class="btn btn-secondary">
+        <i class="fas fa-sign-out-alt"></i> Cerrar Sesión Admin
+      </a>
+    </div>
+  </div>
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
       {% for category, message in messages %}

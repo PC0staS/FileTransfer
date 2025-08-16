@@ -5,7 +5,7 @@ import json
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file, jsonify  # type: ignore
 from init_db import init_database as init_db
-from db_logic import insert_user, clear_db, check_user_login, get_pending_users, set_user_status, get_user_by_id
+from db_logic import insert_user, clear_db, check_user_login, get_pending_users, set_user_status, get_user_by_id, get_all_users, get_user_stats, delete_user_completely
 from logging_config import setup_logging, attach_request_logging # type: ignore
 from werkzeug.security import generate_password_hash  # type: ignore
 from uploads import (
@@ -394,6 +394,102 @@ def main():
         except Exception as e:
             app.logger.error(f"Fallo notificar usuario rechazado: {e}")
         return redirect(url_for('admin_pending'))
+
+    @app.route('/admin/users')
+    def admin_users():
+        if not is_admin_session():
+            return redirect(url_for('admin_login'))
+        
+        # Obtener parámetros de filtro
+        search = request.args.get('search', '').strip()
+        estado_filter = request.args.get('estado', '').strip()
+        
+        # Obtener usuarios con filtros
+        users = get_all_users(search=search, estado_filter=estado_filter)
+        
+        # Obtener estadísticas
+        stats = get_user_stats()
+        
+        return render_template('admin_users.html', users=users, stats=stats)
+
+    @app.route('/admin/change-status', methods=['POST'])
+    def admin_change_status():
+        if not is_admin_session():
+            return redirect(url_for('admin_login'))
+        
+        user_id = request.form.get('user_id')
+        action = request.form.get('action')
+        
+        if not user_id or not action:
+            flash('Parámetros inválidos', 'error')
+            return redirect(url_for('admin_users'))
+        
+        try:
+            user_id = int(user_id)
+        except ValueError:
+            flash('ID de usuario inválido', 'error')
+            return redirect(url_for('admin_users'))
+        
+        # Obtener información del usuario
+        user = get_user_by_id(user_id)
+        if not user:
+            flash('Usuario no encontrado', 'error')
+            return redirect(url_for('admin_users'))
+        
+        success = False
+        message = ""
+        
+        if action == 'approve':
+            success = set_user_status(user_id, 'activo')
+            if success:
+                message = f"Usuario {user['nombre']} aprobado"
+                try:
+                    notify_user_status(user_id, 'activo')
+                except Exception as e:
+                    app.logger.error(f"Fallo notificar usuario activo: {e}")
+            else:
+                message = f"Error al aprobar a {user['nombre']}"
+                
+        elif action == 'reject':
+            success = set_user_status(user_id, 'rechazado') 
+            if success:
+                message = f"Usuario {user['nombre']} rechazado"
+                try:
+                    notify_user_status(user_id, 'rechazado')
+                except Exception as e:
+                    app.logger.error(f"Fallo notificar usuario rechazado: {e}")
+            else:
+                message = f"Error al rechazar a {user['nombre']}"
+                
+        elif action == 'suspend':
+            success = set_user_status(user_id, 'rechazado')  # Suspender = rechazar temporalmente
+            if success:
+                message = f"Usuario {user['nombre']} suspendido"
+            else:
+                message = f"Error al suspender a {user['nombre']}"
+                
+        elif action == 'reactivate':
+            success = set_user_status(user_id, 'activo')
+            if success:
+                message = f"Usuario {user['nombre']} reactivado"
+                try:
+                    notify_user_status(user_id, 'activo')
+                except Exception as e:
+                    app.logger.error(f"Fallo notificar usuario reactivado: {e}")
+            else:
+                message = f"Error al reactivar a {user['nombre']}"
+                
+        elif action == 'delete':
+            success = delete_user_completely(user_id)
+            if success:
+                message = f"Usuario {user['nombre']} eliminado permanentemente"
+            else:
+                message = f"Error al eliminar a {user['nombre']}"
+        else:
+            message = "Acción no válida"
+        
+        flash(message, 'success' if success else 'error')
+        return redirect(url_for('admin_users'))
 
 
     @app.route("/upload", methods=["GET", "POST"])
