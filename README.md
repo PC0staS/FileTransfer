@@ -15,12 +15,16 @@
   cd FileTransfer
   ```
 
-2. **Configura tu IP local en el archivo `.env`:**
+
+2. **Configura tu IP local y rutas de volúmenes en el archivo `.env`:**
   ```env
   # .env
-  HOST_IP=192.168.1.100  # Cambia por la IP de tu equipo en la red
+  HOST_IP=192.168.1.100         # Cambia por la IP de tu equipo en la red
+  DB_VOLUME=/mnt/ssd/filetransfer/db         # Ruta absoluta para la base de datos
+  UPLOADS_VOLUME=/mnt/ssd/filetransfer/uploads # Ruta absoluta para los archivos subidos
   ```
   > Puedes ver tu IP ejecutando `ipconfig` (Windows) o `ip a` (Linux/Mac).
+  > Las rutas de volúmenes deben existir en tu sistema antes de levantar el contenedor.
 
 3. **Levanta el servicio con Docker Compose:**
   ```powershell
@@ -42,6 +46,7 @@
 - Expiración automática de archivos: 5 días desde la subida (configurable)
 - Base de datos SQLite persistente en `db/database.db`
 
+
 Estructura del repositorio
 ```
 / (repo root)
@@ -57,7 +62,7 @@ Estructura del repositorio
     static/
   db/
     database.db
-  uploads/  (mount/volume for file storage)
+  uploads/  (solo para desarrollo local, en producción se usan los volúmenes definidos en .env)
 ```
 
 
@@ -115,8 +120,9 @@ Barra de progreso y compatibilidad
 - La UI usa XHR y eventos `progress` + `loadend` para que la barra llegue al 100% incluso cuando el evento `progress` no marca exactamente 100%.
 - El botón "Copiar enlace" usa `navigator.clipboard` si está disponible y seguro; si no, usa un fallback con `document.execCommand('copy')` y, en último caso, abre un modal con el enlace para copiar manualmente (esto resuelve problemas en macOS/Safari).
 
+
 Cambiar la ruta de almacenamiento o la base de datos
-- Si usas Docker, ajusta `docker-compose.yml` para montar otros volúmenes.
+- Si usas Docker, simplemente edita las variables `DB_VOLUME` y `UPLOADS_VOLUME` en `.env` para cambiar las rutas de persistencia de datos y archivos.
 - Si ejecutas en local, cambia la constante `UPLOAD_FOLDER` en `code/uploads.py` y `DB_PATH` en `code/app.py` si es necesario.
 
 Depuración rápida
@@ -165,28 +171,33 @@ Resumen del ciclo:
 5. Descarga: ahora es pública (`/download/<filename>`) busca en el dueño y, si no, en todos los usuarios (salta expirados).
 6. Limpieza: al listar se ejecuta `cleanup_expired_files(user_id)`; opcional endpoint manual `/api/cleanup_expired`.
 
+
 ## 3. Persistencia y volúmenes
-En `docker-compose.yml`:
+En `docker-compose.yml` ahora se usan variables de entorno para definir los volúmenes:
 ```
 volumes:
-  - ./db:/app/db          # SQLite persistente
-  - ./uploads:/app/uploads # Archivos de usuario
+  - ${DB_VOLUME}:/app/db          # SQLite persistente
+  - ${UPLOADS_VOLUME}:/app/uploads # Archivos de usuario
 ```
+Configura estas rutas en tu archivo `.env` según tu sistema operativo. Asegúrate de que existan antes de levantar el contenedor.
 Si pierdes usuarios tras reiniciar contenedor:
-* Asegura que la carpeta `./db` exista antes del `up`.
-* Comprueba permisos (UID dentro del contenedor pueda escribir). Ej: `chmod 755 db`.
+* Asegura que la carpeta de la variable `DB_VOLUME` exista antes del `up`.
+* Comprueba permisos (UID dentro del contenedor pueda escribir). Ej: `chmod 755 /ruta/db`.
 * Verifica que no montas un volumen vacío encima después (evitar nombres de volumen anónimos).
 
 
-## 4. Variables de entorno y configuración
-| Variable        | Uso                                   | Default / Comentario |
-|-----------------|----------------------------------------|----------------------|
-| HOST_IP         | IP local para exponer el servicio      | Debes definirla en `.env` |
-| SECRET_KEY      | Firmar cookies Flask                   | Busca `.env` / `.secret_key` |
-| FLASK_ENV       | Modo (production/development)          | production            |
-| PYTHONUNBUFFERED| Logs inmediatos                        | 1                    |
 
-> **IMPORTANTE:** Nunca pongas tu IP directamente en `docker-compose.yml`. Usa siempre la variable `${HOST_IP}` y edita solo el archivo `.env` para compartir tu configuración sin exponer datos personales.
+## 4. Variables de entorno y configuración
+| Variable         | Uso                                   | Default / Comentario |
+|------------------|----------------------------------------|----------------------|
+| HOST_IP          | IP local para exponer el servicio      | Defínela en `.env`   |
+| DB_VOLUME        | Ruta absoluta para la base de datos    | Defínela en `.env`   |
+| UPLOADS_VOLUME   | Ruta absoluta para archivos subidos    | Defínela en `.env`   |
+| SECRET_KEY       | Firmar cookies Flask                   | Busca `.env` / `.secret_key` |
+| FLASK_ENV        | Modo (production/development)          | production           |
+| PYTHONUNBUFFERED | Logs inmediatos                        | 1                    |
+
+> **IMPORTANTE:** Nunca pongas tu IP ni rutas absolutas directamente en `docker-compose.yml`. Usa siempre las variables `${HOST_IP}`, `${DB_VOLUME}` y `${UPLOADS_VOLUME}` y edita solo el archivo `.env` para compartir tu configuración sin exponer datos personales.
 
 Modificar expiración: en `uploads.py` busca `timedelta(days=5)`.
 

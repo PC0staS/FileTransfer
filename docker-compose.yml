@@ -5,8 +5,8 @@ services:
     container_name: filetransfer
     env_file: .env
     volumes:
-      - /mnt/ssd/filetransfer/db:/app/db
-      - /mnt/ssd/filetransfer/uploads:/app/uploads
+      - ${DB_VOLUME}:/app/db
+      - ${UPLOADS_VOLUME}:/app/uploads
     ports:
       # Bind sólo a la interfaz Ethernet (eth0) usando la IP definida en .env
       - "${HOST_IP}:3456:3000"
