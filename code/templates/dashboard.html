@@ -13,7 +13,7 @@
                     ¡Hola, {{ username }}!
                 </h1>
                 <p class="dashboard-subtitle">
-                    Bienvenido a tu panel de control. Aquí puedes gestionar tu cuenta y explorar las funcionalidades.
+                    Bienvenido a tu panel de control. Aquí puedes gestionar tus archivos.
                 </p>
             </div>
             <div class="col-md-4 text-end">
@@ -37,116 +37,565 @@
         {% endif %}
     {% endwith %}
 
-    <!-- Cards de estadísticas -->
-    <div class="row mb-4">
-        <div class="col-md-4 mb-3">
-            <div class="card text-center h-100">
-                <div class="card-body">
-                    <i class="bi bi-person-check text-success" style="font-size: 3rem;"></i>
-                    <h5 class="card-title mt-3">Estado de Sesión</h5>
-                    <p class="card-text">Tu sesión está activa y segura</p>
-                    <span class="badge bg-success">Conectado</span>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4 mb-3">
-            <div class="card text-center h-100">
-                <div class="card-body">
-                    <i class="bi bi-shield-check text-primary" style="font-size: 3rem;"></i>
-                    <h5 class="card-title mt-3">Seguridad</h5>
-                    <p class="card-text">Tu cuenta está protegida</p>
-                    <span class="badge bg-primary">Seguro</span>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4 mb-3">
-            <div class="card text-center h-100">
-                <div class="card-body">
-                    <i class="bi bi-server text-info" style="font-size: 3rem;"></i>
-                    <h5 class="card-title mt-3">Tecnología</h5>
-                    <p class="card-text">Flask + Docker + SQLite</p>
-                    <span class="badge bg-info">Moderno</span>
-                </div>
-            </div>
-        </div>
+    <!-- Información de expiración -->
+    <div class="alert alert-info" role="alert">
+        <i class="bi bi-info-circle me-2"></i>
+        <strong>¡Importante!</strong> Los archivos se eliminan automáticamente después de 5 días. 
+        Los archivos próximos a expirar aparecen marcados con badges de color.
+        <button class="btn btn-sm btn-outline-info ms-2" onclick="cleanupExpired()">
+            <i class="bi bi-trash3"></i> Limpiar archivos expirados
+        </button>
     </div>
+
 
     <!-- Panel de acciones -->
     <div class="row">
-        <div class="col-md-8">
+        <div class="col-md-12">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">
+                    <h5 class="mb-0 text-white">
                         <i class="bi bi-gear"></i> Panel de Control
                     </h5>
                 </div>
                 <div class="card-body">
-                    <div class="alert alert-info" role="alert">
-                        <h6 class="alert-heading">
-                            <i class="bi bi-info-circle"></i> ¡Bienvenido al Dashboard!
-                        </h6>
-                        <p class="mb-2">Has iniciado sesión exitosamente en la aplicación.</p>
-                        <small>Desde aquí puedes explorar todas las funcionalidades disponibles.</small>
-                    </div>
+                    
                     
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <div class="glass-effect p-3 rounded-3 text-center">
-                                <i class="bi bi-database text-warning" style="font-size: 2rem;"></i>
-                                <h6 class="mt-2">Base de Datos</h6>
-                                <button class="btn btn-warning btn-sm" onclick="location.href='/clear_db'">
-                                    <i class="bi bi-trash"></i> Limpiar DB
-                                </button>
+                            <div class="glass-effect p-3 rounded-3 text-center" 
+                                 onclick="location.href='/upload'"
+                                 style="cursor: pointer;"
+                                 onmouseover="this.classList.add('shadow-lg')" 
+                                 onmouseout="this.classList.remove('shadow-lg')">
+                                <i class="bi bi-upload text-warning" style="font-size: 2rem;"></i>
+                                <h6 class="mt-2">Subir archivos</h6>
                             </div>
                         </div>
-                        
                         <div class="col-md-6 mb-3">
                             <div class="glass-effect p-3 rounded-3 text-center">
-                                <i class="bi bi-house text-primary" style="font-size: 2rem;"></i>
-                                <h6 class="mt-2">Inicio</h6>
-                                <a href="/" class="btn btn-primary btn-sm">
-                                    <i class="bi bi-arrow-left"></i> Ir al Inicio
-                                </a>
+                                <i class="bi bi-files text-info" style="font-size: 2rem;"></i>
+                                <h6 class="mt-2">{{ files|length }} archivos subidos</h6>
                             </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header">
-                    <h6 class="mb-0">
-                        <i class="bi bi-info-circle"></i> Información de Usuario
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="list-group list-group-flush">
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <i class="bi bi-person"></i> Usuario
-                            </div>
-                            <strong>{{ username }}</strong>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <i class="bi bi-clock"></i> Sesión
-                            </div>
-                            <span class="badge bg-success">Activa</span>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <i class="bi bi-server"></i> Servidor
-                            </div>
-                            <span class="badge bg-info">Docker</span>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    
+    <!-- Lista de archivos -->
+    {% if files %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-gradient bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-folder-open me-2"></i>Mis Archivos
+                        <span class="badge bg-white text-primary ms-2">{{ files|length }}</span>
+                    </h5>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-light btn-sm" onclick="changeView('grid')" id="gridViewBtn">
+                            <i class="bi bi-grid-3x3"></i>
+                        </button>
+                        <button class="btn btn-light btn-sm" onclick="changeView('list')" id="listViewBtn">
+                            <i class="bi bi-list-ul"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Vista de grilla (por defecto) -->
+                <div id="gridView" class="card-body p-4">
+                    <div class="row g-3">
+                        {% for file in files %}
+                        <div class="col-xl-3 col-lg-4 col-md-6">
+                            <div class="file-card card h-100 border-0 shadow-sm position-relative" data-filename="{{ file.name }}">
+                                <div class="card-body text-center p-3">
+                                    <div class="file-icon mb-3">
+                                        <i class="{{ file.icon }} display-4 text-primary"></i>
+                                    </div>
+                                    <h6 class="card-title text-truncate mb-2" title="{{ file.display_name }}">
+                                        {{ file.display_name }}
+                                    </h6>
+                                    <div class="file-meta text-muted small">
+                                        <div><i class="bi bi-hdd me-1"></i>{{ file.size_formatted }}</div>
+                                        <div><i class="bi bi-calendar3 me-1"></i>{{ file.modified }}</div>
+                                        {% if file.expires_date %}
+                                        <div><i class="bi bi-clock me-1"></i>Expira: {{ file.expires_date }}</div>
+                                        {% endif %}
+                                        <div class="mt-1">
+                                            <span class="badge bg-light text-dark border me-1">{{ file.extension }}</span>
+                                            {% if file.days_left is not none %}
+                                                {% if file.days_left == 0 %}
+                                                    <span class="badge bg-danger">Expira hoy</span>
+                                                {% elif file.days_left == 1 %}
+                                                    <span class="badge bg-warning">1 día restante</span>
+                                                {% elif file.days_left <= 2 %}
+                                                    <span class="badge bg-warning">{{ file.days_left }} días restantes</span>
+                                                {% else %}
+                                                    <span class="badge bg-info">{{ file.days_left }} días restantes</span>
+                                                {% endif %}
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-transparent border-0 p-2">
+                                    <div class="btn-group w-100" role="group">
+                                        <a href="/download/{{ file.name }}" class="btn btn-primary btn-sm">
+                                            <i class="bi bi-download"></i>
+                                        </a>
+                                        <button class="btn btn-outline-secondary btn-sm" onclick="copyToClipboard('/download/{{ file.name }}', event)">>
+                                            <i class="bi bi-link-45deg"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger btn-sm" onclick="deleteFile('{{ file.name }}', '{{ file.display_name }}')">
+                                            <i class="bi bi-trash3"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Overlay de selección -->
+                                <div class="file-overlay position-absolute top-0 start-0 w-100 h-100 d-none">
+                                    <div class="d-flex align-items-center justify-content-center h-100 bg-primary bg-opacity-75 text-white">
+                                        <i class="bi bi-check-circle display-3"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Vista de lista -->
+                <div id="listView" class="card-body p-0" style="display: none;">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">Archivo</th>
+                                    <th>Tamaño</th>
+                                    <th>Tipo</th>
+                                    <th>Fecha</th>
+                                    <th>Expiración</th>
+                                    <th width="180">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for file in files %}
+                                <tr data-filename="{{ file.name }}">
+                                    <td class="ps-4">
+                                        <div class="d-flex align-items-center">
+                                            <i class="{{ file.icon }} me-3 text-primary fs-4"></i>
+                                            <div>
+                                                <div class="fw-semibold">{{ file.display_name }}</div>
+                                                <small class="text-muted">{{ file.name[:30] }}{% if file.name|length > 30 %}...{% endif %}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">{{ file.size_formatted }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ file.extension }}</span>
+                                    </td>
+                                    <td class="text-muted">{{ file.modified }}</td>
+                                    <td>
+                                        {% if file.days_left is not none %}
+                                            {% if file.days_left == 0 %}
+                                                <span class="badge bg-danger">Expira hoy</span>
+                                            {% elif file.days_left == 1 %}
+                                                <span class="badge bg-warning text-dark">1 día</span>
+                                            {% elif file.days_left <= 2 %}
+                                                <span class="badge bg-warning text-dark">{{ file.days_left }} días</span>
+                                            {% else %}
+                                                <span class="badge bg-info">{{ file.days_left }} días</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="/download/{{ file.name }}" class="btn btn-primary" title="Descargar">
+                                                <i class="bi bi-download"></i>
+                                            </a>
+                                            <button class="btn btn-outline-secondary" onclick="copyToClipboard('/download/{{ file.name }}', event)" title="Copiar enlace">>
+                                                <i class="bi bi-link-45deg"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger" onclick="deleteFile('{{ file.name }}', '{{ file.display_name }}')" title="Eliminar">
+                                                <i class="bi bi-trash3"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 bg-light">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-folder2-open display-1 text-muted mb-3"></i>
+                    <h4 class="text-muted">No tienes archivos subidos</h4>
+                    <p class="text-muted">Comienza subiendo tu primer archivo</p>
+                    <a href="/upload" class="btn btn-primary btn-lg mt-2">
+                        <i class="bi bi-plus-circle me-2"></i>Subir Primer Archivo
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
+
+<style>
+.file-card {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.file-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.file-icon i {
+    transition: transform 0.3s ease;
+}
+
+.file-card:hover .file-icon i {
+    transform: scale(1.1);
+}
+
+.bg-gradient {
+    background: linear-gradient(135deg, var(--bs-primary) 0%, #0056b3 100%);
+}
+
+/* Estilos para el modal de copiar enlace */
+.modal-content {
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.modal-header {
+    border-bottom: 1px solid #e9ecef;
+    background: #f8f9fa;
+    border-radius: 12px 12px 0 0;
+}
+
+#urlInput-modal input[readonly] {
+    background-color: #f8f9fa;
+    cursor: text;
+}
+
+#urlInput-modal input[readonly]:focus {
+    background-color: #fff;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Animación para texto seleccionado */
+.input-group input:focus {
+    border-color: #86b7fe;
+    outline: 0;
+}
+
+/* Mejoras para dispositivos táctiles */
+@media (max-width: 768px) {
+    .modal-dialog {
+        margin: 1rem;
+    }
+    
+    .input-group input {
+        font-size: 14px;
+    }
+}
+</style>
+
+<script>
+let currentView = 'grid';
+
+function changeView(view) {
+    currentView = view;
+    const gridView = document.getElementById('gridView');
+    const listView = document.getElementById('listView');
+    const gridBtn = document.getElementById('gridViewBtn');
+    const listBtn = document.getElementById('listViewBtn');
+    
+    if (view === 'grid') {
+        gridView.style.display = 'block';
+        listView.style.display = 'none';
+        gridBtn.classList.remove('btn-outline-light');
+        gridBtn.classList.add('btn-light');
+        listBtn.classList.remove('btn-light');
+        listBtn.classList.add('btn-outline-light');
+    } else {
+        gridView.style.display = 'none';
+        listView.style.display = 'block';
+        listBtn.classList.remove('btn-outline-light');
+        listBtn.classList.add('btn-light');
+        gridBtn.classList.remove('btn-light');
+        gridBtn.classList.add('btn-outline-light');
+    }
+    
+    // Guardar preferencia en localStorage
+    localStorage.setItem('filesView', view);
+}
+
+function copyToClipboard(text, event) {
+    const fullUrl = window.location.origin + text;
+    const btn = event.target.closest('button');
+    const originalHtml = btn.innerHTML;
+    
+    // Función para actualizar el botón en caso de éxito
+    function onSuccess() {
+        btn.innerHTML = '<i class="bi bi-check"></i>';
+        btn.classList.remove('btn-outline-secondary');
+        btn.classList.add('btn-success');
+        showToast('¡Enlace copiado al portapapeles!', 'success');
+        
+        setTimeout(() => {
+            btn.innerHTML = originalHtml;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-secondary');
+        }, 2000);
+    }
+    
+    // Función para manejar errores o fallback
+    function onError() {
+        // Fallback: crear un elemento temporal para copiar
+        const textArea = document.createElement('textarea');
+        textArea.value = fullUrl;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        textArea.style.top = '-9999px';
+        document.body.appendChild(textArea);
+        
+        try {
+            textArea.focus();
+            textArea.select();
+            
+            // Para dispositivos iOS
+            if (navigator.userAgent.match(/ipad|ipod|iphone/i)) {
+                textArea.contentEditable = true;
+                textArea.readOnly = false;
+                const range = document.createRange();
+                range.selectNodeContents(textArea);
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+                textArea.setSelectionRange(0, 999999);
+            }
+            
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            if (successful) {
+                onSuccess();
+            } else {
+                // Si todo falla, mostrar el URL en un modal
+                showUrlModal(fullUrl);
+            }
+        } catch (err) {
+            document.body.removeChild(textArea);
+            showUrlModal(fullUrl);
+        }
+    }
+    
+    // Intentar usar la API moderna del portapapeles primero
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(fullUrl)
+            .then(onSuccess)
+            .catch(onError);
+    } else {
+        // Fallback directo para navegadores sin soporte o conexiones no seguras
+        onError();
+    }
+}
+
+function deleteFile(filename, displayName) {
+    if (confirm(`¿Estás seguro de que quieres eliminar "${displayName}"?`)) {
+        fetch('/api/delete_file', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({filename: filename})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message, 'success');
+                // Remover elemento del DOM
+                const fileElements = document.querySelectorAll(`[data-filename="${filename}"]`);
+                fileElements.forEach(el => {
+                    el.style.transition = 'opacity 0.3s ease';
+                    el.style.opacity = '0';
+                    setTimeout(() => {
+                        el.remove();
+                        // Actualizar contador
+                        updateFileCount();
+                    }, 300);
+                });
+            } else {
+                showToast(data.error || 'Error al eliminar el archivo', 'error');
+            }
+        })
+        .catch(error => {
+            showToast('Error de conexión', 'error');
+        });
+    }
+}
+
+function updateFileCount() {
+    const fileCount = document.querySelectorAll('.file-card').length;
+    const badge = document.querySelector('.badge.bg-white.text-primary');
+    if (badge) {
+        badge.textContent = fileCount;
+    }
+    
+    // Si no hay archivos, mostrar mensaje vacío
+    if (fileCount === 0) {
+        location.reload();
+    }
+}
+
+function showUrlModal(url) {
+    // Crear modal dinámicamente
+    const modalId = 'urlModal-' + Date.now();
+    const modalHtml = `
+        <div class="modal fade" id="${modalId}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="bi bi-link-45deg me-2"></i>Enlace de descarga
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-3">Copia manualmente el siguiente enlace:</p>
+                        <div class="input-group">
+                            <input type="text" class="form-control" value="${url}" readonly id="urlInput-${modalId}">
+                            <button class="btn btn-outline-secondary" type="button" onclick="selectAndCopy('urlInput-${modalId}')">
+                                <i class="bi bi-clipboard"></i> Seleccionar
+                            </button>
+                        </div>
+                        <small class="text-muted mt-2 d-block">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Presiona Ctrl+C (o Cmd+C en Mac) para copiar después de seleccionar
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Agregar modal al DOM
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Mostrar modal
+    const modal = new bootstrap.Modal(document.getElementById(modalId));
+    modal.show();
+    
+    // Limpiar modal cuando se cierre
+    document.getElementById(modalId).addEventListener('hidden.bs.modal', function() {
+        this.remove();
+    });
+    
+    // Seleccionar automáticamente el texto
+    setTimeout(() => {
+        const input = document.getElementById(`urlInput-${modalId}`);
+        input.focus();
+        input.select();
+    }, 500);
+}
+
+function selectAndCopy(inputId) {
+    const input = document.getElementById(inputId);
+    input.focus();
+    input.select();
+    
+    try {
+        document.execCommand('copy');
+        showToast('¡Texto seleccionado! Presiona Ctrl+C para copiar', 'success');
+    } catch (err) {
+        showToast('Texto seleccionado. Copia con Ctrl+C (o Cmd+C)', 'info');
+    }
+}
+
+function cleanupExpired() {
+    if (confirm('¿Quieres limpiar todos los archivos expirados? Esta acción no se puede deshacer.')) {
+        fetch('/api/cleanup_expired', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message, 'success');
+                // Recargar la página para mostrar los cambios
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+            } else {
+                showToast(data.error || 'Error al limpiar archivos', 'error');
+            }
+        })
+        .catch(error => {
+            showToast('Error de conexión', 'error');
+        });
+    }
+}
+
+function showToast(message, type) {
+    // Crear toast dinámicamente
+    const toastContainer = document.getElementById('toastContainer') || createToastContainer();
+    const toastId = 'toast-' + Date.now();
+    const bgClass = type === 'success' ? 'bg-success' : 'bg-danger';
+    const icon = type === 'success' ? 'bi-check-circle' : 'bi-exclamation-triangle';
+    
+    const toastHtml = `
+        <div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="bi ${icon} me-2"></i>${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    `;
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement);
+    toast.show();
+    
+    // Limpiar después de que se oculte
+    toastElement.addEventListener('hidden.bs.toast', () => {
+        toastElement.remove();
+    });
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'toast-container position-fixed top-0 end-0 p-3';
+    container.style.zIndex = '9999';
+    document.body.appendChild(container);
+    return container;
+}
+
+// Inicializar vista guardada
+document.addEventListener('DOMContentLoaded', () => {
+    const savedView = localStorage.getItem('filesView') || 'grid';
+    changeView(savedView);
+});
+</script>
 {%- endblock -%}

@@ -4,3 +4,5 @@ db/database.db
 .DS_Store
 .env
 app.log
+uploads/*
+uploads/

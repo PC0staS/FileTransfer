@@ -1,0 +1,381 @@
+{%- extends "base.html" -%}
+
+{%- block title -%}Subir Archivos{%- endblock -%}
+
+{%- block content -%}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Header -->
+            <div class="text-center mb-4">
+                <h2><i class="bi bi-cloud-upload text-primary"></i> Subir Archivos</h2>
+                <p class="text-muted">Arrastra y suelta archivos o haz clic para seleccionar</p>
+            </div>
+
+            <!-- Zona de drop principal -->
+            <div class="card shadow-lg border-0">
+                <div class="card-body p-5">
+                    <!-- Mensajes flash -->
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert {{ 'alert-success' if category == 'success' else 'alert-danger' }} alert-dismissible fade show" role="alert">
+                                    <i class="bi {{ 'bi-check-circle' if category == 'success' else 'bi-exclamation-triangle' }}"></i>
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <!-- Zona de drag and drop -->
+                    <div id="dropZone" class="upload-drop-zone border-3 border-dashed rounded-4 p-5 text-center position-relative">
+                        <div class="upload-icon mb-3">
+                            <i class="bi bi-cloud-upload display-1 text-primary opacity-75"></i>
+                        </div>
+                        <h4 class="text-primary mb-2">Arrastra archivos aquí</h4>
+                        <p class="text-muted mb-4">o haz clic para seleccionar archivos</p>
+                        
+                        <form id="uploadForm" enctype="multipart/form-data" class="d-none">
+                            <input type="file" id="fileInput" name="file" multiple accept="*/*">
+                        </form>
+                        
+                        <button type="button" id="selectBtn" class="btn btn-primary btn-lg px-4">
+                            <i class="bi bi-folder2-open"></i> Seleccionar Archivos
+                        </button>
+                        
+                        <div class="mt-3">
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle"></i>
+                                Formatos soportados: TXT, PDF, Imágenes, Documentos, Audio, Video, Archivos comprimidos y más
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Lista de archivos seleccionados -->
+                    <div id="filesList" class="mt-4" style="display: none;">
+                        <h5><i class="bi bi-files"></i> Archivos seleccionados:</h5>
+                        <div id="filesContainer"></div>
+                    </div>
+
+                    <!-- Controles de acción -->
+                    <div id="uploadControls" class="mt-4 d-none">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <button type="button" id="uploadAllBtn" class="btn btn-success btn-lg">
+                                <i class="bi bi-cloud-upload"></i> Subir Todos los Archivos
+                            </button>
+                            <button type="button" id="clearBtn" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle"></i> Limpiar Lista
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navegación -->
+            <div class="text-center mt-4">
+                <a href="/dashboard" class="btn btn-outline-primary btn-lg">
+                    <i class="bi bi-arrow-left"></i> Volver al Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.upload-drop-zone {
+    border-color: #dee2e6 !important;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    transition: all 0.3s ease;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.upload-drop-zone:hover {
+    border-color: #007bff !important;
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,123,255,0.15);
+}
+
+.upload-drop-zone.drag-over {
+    border-color: #28a745 !important;
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    transform: scale(1.02);
+}
+
+.file-item {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    transition: all 0.2s ease;
+}
+
+.file-item:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transform: translateX(5px);
+}
+
+.file-progress {
+    height: 4px;
+    background: #f8f9fa;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+
+.file-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #007bff, #0056b3);
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.upload-icon {
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+</style>
+
+<script>
+class FileUploader {
+    constructor() {
+        this.selectedFiles = new Map();
+        this.initializeElements();
+        this.bindEvents();
+    }
+
+    initializeElements() {
+        this.dropZone = document.getElementById('dropZone');
+        this.fileInput = document.getElementById('fileInput');
+        this.selectBtn = document.getElementById('selectBtn');
+        this.filesList = document.getElementById('filesList');
+        this.filesContainer = document.getElementById('filesContainer');
+        this.uploadControls = document.getElementById('uploadControls');
+        this.uploadAllBtn = document.getElementById('uploadAllBtn');
+        this.clearBtn = document.getElementById('clearBtn');
+    }
+
+    bindEvents() {
+        // Drag and drop events
+        this.dropZone.addEventListener('dragover', this.handleDragOver.bind(this));
+        this.dropZone.addEventListener('dragleave', this.handleDragLeave.bind(this));
+        this.dropZone.addEventListener('drop', this.handleDrop.bind(this));
+        this.dropZone.addEventListener('click', () => this.fileInput.click());
+
+        // File selection
+        this.selectBtn.addEventListener('click', () => this.fileInput.click());
+        this.fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+
+        // Action buttons
+        this.uploadAllBtn.addEventListener('click', this.uploadAllFiles.bind(this));
+        this.clearBtn.addEventListener('click', this.clearAllFiles.bind(this));
+    }
+
+    handleDragOver(e) {
+        e.preventDefault();
+        this.dropZone.classList.add('drag-over');
+    }
+
+    handleDragLeave(e) {
+        e.preventDefault();
+        this.dropZone.classList.remove('drag-over');
+    }
+
+    handleDrop(e) {
+        e.preventDefault();
+        this.dropZone.classList.remove('drag-over');
+        const files = Array.from(e.dataTransfer.files);
+        this.addFiles(files);
+    }
+
+    handleFileSelect(e) {
+        const files = Array.from(e.target.files);
+        this.addFiles(files);
+    }
+
+    addFiles(files) {
+        files.forEach(file => {
+            const id = Date.now() + Math.random();
+            this.selectedFiles.set(id, file);
+        });
+        this.renderFilesList();
+        this.showControls();
+    }
+
+    renderFilesList() {
+        this.filesContainer.innerHTML = '';
+        
+        this.selectedFiles.forEach((file, id) => {
+            const fileItem = this.createFileItem(file, id);
+            this.filesContainer.appendChild(fileItem);
+        });
+
+        this.filesList.style.display = this.selectedFiles.size > 0 ? 'block' : 'none';
+    }
+
+    createFileItem(file, id) {
+        const div = document.createElement('div');
+        div.className = 'file-item d-flex justify-content-between align-items-center';
+        div.innerHTML = `
+            <div class="file-info">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-file-earmark me-2 text-primary"></i>
+                    <div>
+                        <div class="fw-bold">${file.name}</div>
+                        <small class="text-muted">${this.formatFileSize(file.size)}</small>
+                    </div>
+                </div>
+                <div class="file-progress mt-2" style="display: none;">
+                    <div class="file-progress-bar"></div>
+                </div>
+            </div>
+            <button class="btn btn-outline-danger btn-sm" onclick="fileUploader.removeFile(${id})">
+                <i class="bi bi-x"></i>
+            </button>
+        `;
+        return div;
+    }
+
+    removeFile(id) {
+        this.selectedFiles.delete(id);
+        this.renderFilesList();
+        if (this.selectedFiles.size === 0) {
+            this.hideControls();
+        }
+    }
+
+    clearAllFiles() {
+        this.selectedFiles.clear();
+        this.renderFilesList();
+        this.hideControls();
+    }
+
+    showControls() {
+        this.uploadControls.classList.remove('d-none');
+    }
+
+    hideControls() {
+        this.uploadControls.classList.add('d-none');
+    }
+
+    async uploadAllFiles() {
+        const fileItems = this.filesContainer.querySelectorAll('.file-item');
+        let successCount = 0;
+        
+        this.uploadAllBtn.disabled = true;
+        this.uploadAllBtn.innerHTML = '<i class="spinner-border spinner-border-sm me-2"></i>Subiendo...';
+
+        for (let i = 0; i < fileItems.length; i++) {
+            const fileItem = fileItems[i];
+            const fileId = Array.from(this.selectedFiles.keys())[i];
+            const file = this.selectedFiles.get(fileId);
+            
+            const success = await this.uploadFile(file, fileItem);
+            if (success) successCount++;
+        }
+
+        // Mostrar resultado
+        setTimeout(() => {
+            if (successCount === this.selectedFiles.size) {
+                window.location.href = '/dashboard';
+            } else {
+                this.uploadAllBtn.disabled = false;
+                this.uploadAllBtn.innerHTML = '<i class="bi bi-cloud-upload"></i> Reintentar';
+            }
+        }, 1000);
+    }
+
+    async uploadFile(file, fileItem) {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const progressBar = fileItem.querySelector('.file-progress-bar');
+        const progressContainer = fileItem.querySelector('.file-progress');
+        progressContainer.style.display = 'block';
+
+        try {
+            const xhr = new XMLHttpRequest();
+            
+            return new Promise((resolve) => {
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const percent = (e.loaded / e.total) * 100;
+                        progressBar.style.width = percent + '%';
+                    }
+                });
+                // Asegurar que la barra llegue al 100% y quede animada suavemente.
+                xhr.addEventListener('load', () => {
+                    // Forzar width 100% (algunas veces el evento progress no alcanza exactamente 100)
+                    progressBar.style.width = '100%';
+                    // Dar un pequeño retardo para que la transición sea visible
+                    setTimeout(() => {
+                        if (xhr.status === 200) {
+                            const response = JSON.parse(xhr.responseText);
+                            if (response.success) {
+                                fileItem.classList.add('border-success');
+                                progressBar.style.background = 'linear-gradient(90deg, #28a745, #20c997)';
+                                resolve(true);
+                            } else {
+                                this.showFileError(fileItem, response.error);
+                                resolve(false);
+                            }
+                        } else {
+                            this.showFileError(fileItem, 'Error del servidor');
+                            resolve(false);
+                        }
+                    }, 250);
+                });
+
+                // loadend se asegura de ejecutarse al terminar independientemente del resultado
+                xhr.addEventListener('loadend', () => {
+                    // Make sure progress bar is visually complete
+                    progressBar.style.width = '100%';
+                });
+
+                xhr.addEventListener('error', () => {
+                    this.showFileError(fileItem, 'Error de conexión');
+                    resolve(false);
+                });
+
+                xhr.open('POST', '/api/upload_progress');
+                xhr.send(formData);
+            });
+        } catch (error) {
+            this.showFileError(fileItem, error.message);
+            return false;
+        }
+    }
+
+    showFileError(fileItem, error) {
+        fileItem.classList.add('border-danger');
+        const progressBar = fileItem.querySelector('.file-progress-bar');
+        progressBar.style.background = '#dc3545';
+        progressBar.style.width = '100%';
+    }
+
+    formatFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+}
+
+// Initialize uploader
+let fileUploader;
+document.addEventListener('DOMContentLoaded', () => {
+    fileUploader = new FileUploader();
+});
+</script>
+{%- endblock -%}

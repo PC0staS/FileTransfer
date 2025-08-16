@@ -1,239 +1,119 @@
-# 🚀 DockerApp - Aplicación Web Moderna
+# FileTransfer
 
-Una aplicación web elegante y moderna construida con Flask, Docker y SQLite, que demuestra las mejores prácticas de desarrollo y containerización.
+Servidor de intercambio de archivos ligero usando Flask.
 
-![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![Flask](https://img.shields.io/badge/Flask-000000?style=for-the-badge&logo=flask&logoColor=white)
-![SQLite](https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white)
-![Bootstrap](https://img.shields.io/badge/Bootstrap-563D7C?style=for-the-badge&logo=bootstrap&logoColor=white)
+Características principales
+- Autenticación básica de usuarios.
+- Subida mediante formulario o drag & drop con barra de progreso (AJAX).
+- Soporta cualquier tipo de archivo (sin limitación de extensión ni restricciones de tamaño).
+- Almacenamiento por usuario en `uploads/user_{id}/`.
+- Enlaces de descarga directos y botón "copiar enlace" con fallback para macOS/Safari.
+- Expiración automática de archivos: 5 días desde la subida (se puede cambiar fácilmente en `code/uploads.py`).
+- Base de datos SQLite persistente en `db/database.db`.
 
-## ✨ Características
-
-- 🎨 **Diseño Moderno**: Interfaz elegante con gradientes, efectos de cristal y animaciones suaves
-- 🔐 **Sistema de Autenticación**: Registro e inicio de sesión seguro con manejo de sesiones
-- 🐳 **Containerización Completa**: Aplicación completamente dockerizada para fácil despliegue
-- 📱 **Responsive Design**: Adaptable a todos los dispositivos y tamaños de pantalla
-- 🎯 **UX/UI Optimizada**: Experiencia de usuario fluida con feedback visual inmediato
-- 🔒 **Seguridad**: Manejo seguro de contraseñas y sesiones persistentes
-
-## 🛠️ Tecnologías Utilizadas
-
-| Tecnología | Propósito | Versión |
-|------------|-----------|---------|
-| **Python** | Backend | 3.10+ |
-| **Flask** | Framework web | Latest |
-| **SQLite** | Base de datos | Latest |
-| **Docker** | Containerización | Latest |
-| **Bootstrap 5** | Framework CSS | 5.3.3 |
-| **JavaScript** | Interactividad | ES6+ |
-| **Gunicorn** | Servidor WSGI | Latest |
-
-## 🚀 Inicio Rápido
-
-### Prerrequisitos
-
-- Docker y Docker Compose instalados
-- Git (para clonar el repositorio)
-
-### Instalación y Ejecución
-
-1. **Clonar el repositorio**
-   ```bash
-   git clone https://github.com/PC0staS/prueba-docker.git
-   cd prueba-docker
-   ```
-
-2. **Construir y ejecutar con Docker Compose**
-   Añade tu clave al .env para producción.
-
-   ```bash
-   docker compose up --build
-   ```
-
-3. **Acceder a la aplicación**
-   
-   Abre tu navegador y ve a: `http://localhost:3000`
-
-¡Eso es todo! La aplicación estará disponible y lista para usar.
-
-## 📁 Estructura del Proyecto
-
+Estructura del repositorio
 ```
-prueba-docker/
-├── 📄 docker-compose.yml     # Configuración de Docker Compose
-├── 📄 dockerfile            # Imagen Docker personalizada
-├── 📁 code/                 # Código fuente de la aplicación
-│   ├── 📄 app.py            # Aplicación principal Flask
-│   ├── 📄 db_logic.py       # Lógica de base de datos
-│   ├── 📄 init_db.py        # Inicialización de DB
-│   ├── 📄 wsgi.py           # Punto de entrada WSGI
-│   ├── 📄 requirements.txt  # Dependencias Python
-│   ├── 📁 static/           # Archivos estáticos
-│   │   ├── 📄 styles.css    # Estilos personalizados
-│   │   └── 📁 js/
-│   │       └── 📄 app.js    # JavaScript interactivo
-│   └── 📁 templates/        # Plantillas HTML
-│       ├── 📄 base.html     # Plantilla base
-│       ├── 📄 index.html    # Página de inicio
-│       ├── 📄 login.html    # Formulario de login
-│       ├── 📄 register.html # Formulario de registro
-│       └── 📄 dashboard.html # Panel de usuario
-└── 📁 db/                   # Base de datos SQLite
-    └── 📄 database.db       # Archivo de base de datos
+/ (repo root)
+  docker-compose.yml
+  Dockerfile
+  code/
+    app.py
+    uploads.py
+    db_logic.py
+    init_db.py
+    wsgi.py
+    templates/
+    static/
+  db/
+    database.db
+  uploads/  (mount/volume for file storage)
 ```
 
-## 🎨 Características del Diseño
+Requisitos
+- Docker / Docker Compose (recomendado)
+- O Python 3.8+ y pip si quieres ejecutar sin Docker
 
-### Paleta de Colores
-- **Primario**: `#6366f1` (Índigo vibrante)
-- **Secundario**: `#10b981` (Verde esmeralda)
-- **Fondo**: Gradiente oscuro con efectos de cristal
-- **Texto**: Esquema de colores optimizado para legibilidad
+Quick start (con Docker Compose)
 
-### Efectos Visuales
-- ✨ Animaciones suaves al cargar
-- 🔮 Efectos de cristal (glass morphism)
-- 🌊 Gradientes dinámicos
-- 🎯 Hover effects interactivos
-- 📱 Transiciones responsivas
-
-## 🔧 Comandos Útiles
-
-### Docker
-```bash
-# Construir la imagen
-docker compose build
-
-# Ejecutar en segundo plano
-docker compose up -d
-
-# Ver logs
-docker compose logs -f
-
-# Detener servicios
-docker compose down
-
-# Limpiar volúmenes
-docker compose down -v
-```
-
-### Exponer temporalmente la app con Cloudflare Tunnel (desde Docker)
-
-Si tu aplicación corre en el host y quieres ejecutar cloudflared desde un contenedor Docker, usa `host.docker.internal` para que el contenedor apunte al host Windows:
-
-```bash
-# Ejecutar cloudflared desde Docker y apuntar al host (Windows/Docker Desktop)
-docker run --rm -it cloudflare/cloudflared tunnel --url http://host.docker.internal:3000
-```
-
-Esto crea una URL pública temporal que reenvía a `http://host.docker.internal:3000`. Detén el túnel con Ctrl+C en la terminal del contenedor.
-
-### Desarrollo Local
-```bash
-# Instalar dependencias (si desarrollas sin Docker)
-pip install -r code/requirements.txt
-
-# Ejecutar la aplicación
-python code/app.py
-
-# Ejecutar con Gunicorn
-gunicorn --bind 0.0.0.0:3000 wsgi:app
-```
-
-## 🗄️ Base de Datos
-
-La aplicación utiliza SQLite con la siguiente estructura:
-
-### Tabla `usuarios`
-| Campo | Tipo | Descripción |
-|-------|------|-------------|
-| `id` | INTEGER PRIMARY KEY | ID único del usuario |
-| `nombre` | TEXT NOT NULL | Nombre de usuario |
-| `email` | TEXT UNIQUE NOT NULL | Email (único) |
-| `password` | TEXT NOT NULL | Contraseña hasheada |
-
-## 🌟 Funcionalidades
-
-### 🔐 Sistema de Autenticación
-- Registro de nuevos usuarios
-- Inicio de sesión seguro
-- Manejo de sesiones persistentes (7 días)
-- Validación de formularios
-- Protección de rutas
-
-### 🎨 Interfaz de Usuario
-- Página de inicio atractiva
-- Formularios modernos con validación visual
-- Dashboard personalizado
-- Mensajes flash informativos
-- Navegación intuitiva
-
-### 🔧 Administración
-- Limpieza de base de datos
-- Manejo de errores elegante
-- Logs de aplicación
-- Configuración mediante variables de entorno
-
-## 🚀 Despliegue en Producción
-
-Para desplegar en producción, considera:
-
-1. **Variables de Entorno**
-   ```bash
-   export FLASK_ENV=production
-   export SECRET_KEY=tu-clave-secreta-muy-segura
-   ```
-
-### .env y uso con Docker
-
-Antes de construir/ejecutar con Docker, crea un archivo `.env` en la raíz del repositorio con la variable `SECRET_KEY`.(Tiene que ser una clave segura.)
-
-Usar el `.env` con Docker:
+Abre PowerShell en la carpeta del repo y ejecuta:
 
 ```powershell
+# Construir y levantar servicios en background
+docker-compose up --build -d
 
-# Run (compose lee .env automáticamente cuando usas env_file en compose, o puedes pasar explícitamente)
-docker compose up --build
-
+# Ver logs
+docker-compose logs -f
 ```
-2. **Proxy Reverso** (Nginx recomendado)
-3. **SSL/TLS** para HTTPS
-4. **Backup de Base de Datos** regular
-5. **Monitoreo** de aplicación
 
-## 🤝 Contribuir
+Accede a http://localhost:3000
 
-¡Las contribuciones son bienvenidas! Para contribuir:
+Ejecutar localmente sin Docker (desarrollo)
 
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
+```powershell
+# Crear entorno virtual
+cd .\code
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 
-## 📝 Licencia
+# Asegurar SECRET_KEY persistente
+# Genera un secreto y guárdalo en la raíz del repo como .secret_key (una sola línea)
+python - <<'PY'
+import secrets
+print(secrets.token_hex(32))
+PY
+# Copia el valor y pégal o crea el archivo .secret_key con ese contenido
 
-Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
+# Lanzar la app
+$env:FLASK_APP = 'app.py'
+python app.py
+```
 
-## 👨‍💻 Autor
+Variables / archivos importantes
+- `.secret_key` (en la raíz del repo): valor persistente del `SECRET_KEY` de Flask (si no existe, la app intenta leer `.env` o genera uno temporal).
+- `db/database.db`: archivo SQLite que guarda usuarios y metadatos.
+- `uploads/` (montado en Docker): directorio donde se guardan los archivos por usuario.
 
-**Pablo Costas**
-- GitHub: [@PC0staS](https://github.com/PC0staS)
+Rutas y endpoints relevantes
+- `/` - Página de inicio
+- `/register`, `/login`, `/logout` - Autenticación
+- `/upload` - UI para subir archivos (drag & drop, multi-file)
+- `/dashboard` - Lista y gestión de "Mis archivos"
+- `/download/<filename>` - Descarga de archivo
+- `/api/upload_progress` - Endpoint AJAX para subir archivos con progreso
+- `/api/delete_file` - Eliminar archivo (AJAX)
+- `/api/cleanup_expired` - Forzar limpieza de archivos expirados para el usuario actual
 
-## 🙏 Agradecimientos
+Comportamiento de subida
+- Cualquier extensión está permitida. El servidor añade un timestamp al nombre para evitar colisiones.
+- Metadatos por archivo (original name, fecha de subida, fecha de expiración) se guardan como `.{filename}.meta` en la misma carpeta del usuario.
+- La expiración por defecto es 5 días. Cambia `timedelta(days=5)` en `code/uploads.py` si quieres otro periodo.
 
-- Flask por el framework web minimalista
-- Docker por la containerización
-- Bootstrap por el framework CSS
-- La comunidad open source por las herramientas increíbles
+Barra de progreso y compatibilidad
+- La UI usa XHR y eventos `progress` + `loadend` para que la barra llegue al 100% incluso cuando el evento `progress` no marca exactamente 100%.
+- El botón "Copiar enlace" usa `navigator.clipboard` si está disponible y seguro; si no, usa un fallback con `document.execCommand('copy')` y, en último caso, abre un modal con el enlace para copiar manualmente (esto resuelve problemas en macOS/Safari).
 
----
+Cambiar la ruta de almacenamiento o la base de datos
+- Si usas Docker, ajusta `docker-compose.yml` para montar otros volúmenes.
+- Si ejecutas en local, cambia la constante `UPLOAD_FOLDER` en `code/uploads.py` y `DB_PATH` en `code/app.py` si es necesario.
 
-<div align="center">
+Depuración rápida
+- Si las subidas fallan: revisa `docker-compose logs` o los logs del contenedor.
+- Si ves problemas con sesiones: confirma que `.secret_key` existe o que `SECRET_KEY` está en el entorno.
+- Para verificar importación rápida (desde `code/`):
 
-**¿Te gusta el proyecto? ¡Dale una ⭐!**
+```powershell
+python -c "from uploads import get_user_files; print('OK', callable(get_user_files))"
+```
 
-Made with ❤️ and Docker 🐳
+Cómo contribuir
+- Haz fork, crea una rama, añade tests si cambias lógica y abre PR.
+- Pequeñas mejoras recomendadas: enlaces temporales con tokens, límites opcionales por usuario, limpieza programada con cron o un worker.
 
-</div>
+Notas finales
+- Esta app está pensada para uso en redes locales o como proyecto de aprendizaje. Para producción considera:
+  - Usar HTTPS (necesario para la API del portapapeles en navegadores modernos)
+  - Autenticación más robusta (hashing, salted passwords ya se usa con werkzeug)
+  - Limitar tamaños/escaneo antivirus si aceptas archivos públicos
+
+Si quieres, genero una sección con ejemplos curl para la API o añado un script de limpieza cron para eliminar expirados automáticamente.

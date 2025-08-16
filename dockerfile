@@ -1,7 +1,7 @@
 FROM ubuntu:22.04
 # Crear estructura de carpetas
 WORKDIR /app
-RUN mkdir -p /app/code /app/db
+RUN mkdir -p /app/code /app/db /app/uploads
 WORKDIR /app/code
 
 RUN apt update && apt install -y python3 python3-venv sqlite3

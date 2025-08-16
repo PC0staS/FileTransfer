@@ -1,10 +1,14 @@
 services:
   web:
     build: .
-    image: pcostas/prueba-docker:latest
-    container_name: prueba-flask
+    image: pcostas/filetransfer:latest
+    container_name: filetransfer
+    env_file: .env
+    volumes:
+      - ./db:/app/db
+      - ./uploads:/app/uploads
     ports:
-      - "3000:3000"
+      - "3456:3000"
     environment:
       - PYTHONUNBUFFERED=1
       - FLASK_ENV=production
