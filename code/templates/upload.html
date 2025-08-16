@@ -398,14 +398,15 @@ class FileUploader {
 
     async uploadFileChunked(file, fileItem, helpers) {
         const { progressBar, statusLine, percentEl, speedEl, etaEl } = helpers;
-        const startTime = performance.now();
-        const chunkSize = 8 * 1024 * 1024; // debe coincidir con backend DEFAULT_CHUNK_SIZE si no se recibe
+    const startTime = performance.now();
+    // Usar tamaño base menor para feedback rápido; backend aceptará trozos menores
+    let targetChunkSize = 16 * 1024 * 1024; // 16MB
         let uploadId = null;
         let sentBytes = 0;
         let chunkIndex = 0;
 
         // Inicializar subida
-        const initResp = await fetch('/api/chunk/init', {
+    const initResp = await fetch('/api/chunk/init', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ filename: file.name, total_size: file.size })
@@ -416,44 +417,78 @@ class FileUploader {
         }
         const initData = await initResp.json();
         uploadId = initData.upload_id;
-        const serverChunkSize = initData.chunk_size || chunkSize;
+        const serverChunkSize = initData.chunk_size || targetChunkSize;
+        // Ajuste dinámico: usar el menor entre nuestro target y servidor para mayor reactividad
+        targetChunkSize = Math.min(serverChunkSize, targetChunkSize);
 
         while (sentBytes < file.size) {
-            const end = Math.min(sentBytes + serverChunkSize, file.size);
+            const end = Math.min(sentBytes + targetChunkSize, file.size);
             const blob = file.slice(sentBytes, end);
             const form = new FormData();
             form.append('upload_id', uploadId);
             form.append('chunk_index', chunkIndex.toString());
             form.append('chunk', blob);
 
-            const t0 = performance.now();
-            const resp = await fetch('/api/chunk/upload', { method: 'POST', body: form });
-            const t1 = performance.now();
-            if (!resp.ok) {
-                const err = await resp.json().catch(()=>({error:'Error chunk'}));
-                this.showFileError(fileItem, err.error || 'Error chunk');
-                return false;
-            }
-            const data = await resp.json();
-            if (!data.success) {
-                this.showFileError(fileItem, data.error || 'Fallo chunk');
-                return false;
-            }
-            sentBytes = data.received_bytes;
-            chunkIndex++;
-            const percent = (sentBytes / file.size) * 100;
-            progressBar.style.width = percent + '%';
-            if (percentEl) percentEl.textContent = percent.toFixed(1) + '%';
+            const xhr = new XMLHttpRequest();
+            const chunkStartBytes = sentBytes;
+            const chunkStartTime = performance.now();
 
-            // Velocidad instantánea por chunk
-            const elapsedChunk = (t1 - t0) / 1000;
-            const chunkSpeed = blob.size / (elapsedChunk || 1);
-            // Velocidad media
-            const totalElapsed = (performance.now() - startTime) / 1000;
-            const avgSpeed = sentBytes / (totalElapsed || 1);
-            if (speedEl) speedEl.textContent = this.formatSpeed(chunkSpeed) + ' / ' + this.formatSpeed(avgSpeed) + ' avg';
-            const remaining = file.size - sentBytes;
-            if (etaEl) etaEl.textContent = 'ETA ' + this.formatETA(remaining / (avgSpeed || 1));
+            const promise = new Promise((resolve) => {
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (!e.lengthComputable) return;
+                    const absoluteUploaded = chunkStartBytes + e.loaded;
+                    const percent = (absoluteUploaded / file.size) * 100;
+                    progressBar.style.width = percent + '%';
+                    if (percentEl) percentEl.textContent = percent.toFixed(1) + '%';
+
+                    const now = performance.now();
+                    const totalElapsed = (now - startTime) / 1000;
+                    const avgSpeed = absoluteUploaded / (totalElapsed || 1);
+                    const instBytes = e.loaded;
+                    const instElapsed = (now - chunkStartTime) / 1000;
+                    const instSpeed = instBytes / (instElapsed || 1);
+                    const blended = instSpeed * 0.6 + avgSpeed * 0.4;
+                    if (speedEl) speedEl.textContent = this.formatSpeed(blended);
+                    const rem = file.size - absoluteUploaded;
+                    if (etaEl) etaEl.textContent = 'ETA ' + this.formatETA(rem / (blended || 1));
+                });
+                xhr.onreadystatechange = () => {
+                    if (xhr.readyState === 4) {
+                        if (xhr.status === 200) {
+                            try {
+                                const data = JSON.parse(xhr.responseText);
+                                if (data.success) {
+                                    sentBytes = data.received_bytes;
+                                    resolve(true);
+                                } else {
+                                    this.showFileError(fileItem, data.error || 'Fallo chunk');
+                                    resolve(false);
+                                }
+                            } catch (e) {
+                                this.showFileError(fileItem, 'Respuesta inválida');
+                                resolve(false);
+                            }
+                        } else {
+                            this.showFileError(fileItem, 'Error chunk HTTP ' + xhr.status);
+                            resolve(false);
+                        }
+                    }
+                };
+                xhr.open('POST', '/api/chunk/upload');
+                xhr.send(form);
+            });
+
+            const ok = await promise;
+            if (!ok) return false;
+            chunkIndex++;
+
+            // Ajuste adaptativo de chunk: intentar que cada chunk dure ~1s
+            const chunkDuration = (performance.now() - chunkStartTime) / 1000;
+            if (chunkDuration < 0.7 && targetChunkSize < 32 * 1024 * 1024) {
+                targetChunkSize = Math.min(targetChunkSize * 2, 32 * 1024 * 1024);
+            } else if (chunkDuration > 1.8 && targetChunkSize > 4 * 1024 * 1024) {
+                targetChunkSize = Math.max(Math.floor(targetChunkSize / 2), 4 * 1024 * 1024);
+            }
         }
 
         // Finalizar
