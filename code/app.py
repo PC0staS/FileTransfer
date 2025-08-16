@@ -10,7 +10,7 @@ from logging_config import setup_logging, attach_request_logging # type: ignore
 from werkzeug.security import generate_password_hash  # type: ignore
 from uploads import (
     get_user_files, handle_file_upload, handle_file_download,  # type: ignore
-    delete_user_file, allowed_file # type: ignore
+    delete_user_file, allowed_file, handle_public_download # type: ignore
 )
 
 DB_PATH = '/app/db/database.db'  # ruta usada también en db_logic (mantener si se requiere en otro lugar)
@@ -173,16 +173,25 @@ def main():
 
     @app.route("/download/<filename>")
     def download_file(filename):
-        if 'user_id' not in session:
-            flash('Debes iniciar sesión primero', 'error')
-            return redirect(url_for('login'))
-        
-        result = handle_file_download(filename, session['user_id'])
-        if result is None:
-            flash('Archivo no encontrado', 'error')
-            return redirect(url_for('dashboard'))
-        
-        return result
+        # Si el usuario está logueado, validar que el archivo es suyo para mantener separación visual en dashboard
+        from uploads import handle_public_download # type: ignore
+        if 'user_id' in session:
+            result = handle_file_download(filename, session['user_id'])
+            if result is None:
+                # Intentar descarga pública si no pertenece al usuario
+                public_result = handle_public_download(filename)
+                if public_result is None:
+                    flash('Archivo no encontrado', 'error')
+                    return redirect(url_for('dashboard'))
+                return public_result
+            return result
+        else:
+            # Descarga pública sin sesión
+            public_result = handle_public_download(filename)
+            if public_result is None:
+                # Respuesta simple sin redirecciones a dashboard para usuarios públicos
+                return "Archivo no encontrado o expirado", 404
+            return public_result
 
     @app.route("/api/upload_progress", methods=["POST"])
     def upload_progress():

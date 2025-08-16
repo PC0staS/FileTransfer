@@ -269,6 +269,45 @@ def handle_file_download(filename, user_id):
     
     return send_file(file_path, as_attachment=True, download_name=display_name)
 
+def find_file_any_user(filename):
+    """Buscar un archivo por nombre dentro de todos los directorios de usuarios.
+    Retorna (file_path, display_name) o (None, None) si no se encuentra o expiró.
+    """
+    if not filename:
+        return None, None
+    if not os.path.exists(UPLOAD_FOLDER):
+        return None, None
+    try:
+        for entry in os.listdir(UPLOAD_FOLDER):
+            if not entry.startswith('user_'):
+                continue
+            user_dir = os.path.join(UPLOAD_FOLDER, entry)
+            if not os.path.isdir(user_dir):
+                continue
+            candidate = os.path.join(user_dir, filename)
+            if os.path.isfile(candidate):
+                # determinar user_id
+                try:
+                    user_id = int(entry.replace('user_',''))
+                except Exception:
+                    user_id = None
+                # Verificar expiración (si hay metadatos)
+                if user_id is not None and is_file_expired(user_id, filename):
+                    continue
+                metadata = load_file_metadata(user_id, filename) if user_id is not None else None
+                display_name = metadata.get('original_name') if metadata else (filename.split('_',3)[-1] if '_' in filename else filename)
+                return candidate, display_name
+    except Exception:
+        pass
+    return None, None
+
+def handle_public_download(filename):
+    """Descarga pública (sin sesión) buscando en todos los usuarios"""
+    file_path, display_name = find_file_any_user(filename)
+    if not file_path:
+        return None
+    return send_file(file_path, as_attachment=True, download_name=display_name)
+
 def delete_user_file(filename, user_id):
     """Eliminar un archivo del usuario y sus metadatos"""
     user_dir = get_user_upload_dir(user_id)
