@@ -90,8 +90,19 @@ def attach_request_logging(app):
         g._start_time = time.perf_counter()  # type: ignore[attr-defined]
         try:
             params_raw = dict(request.args)
-            form_raw = dict(request.form)
-        except Exception:  # pragma: no cover - very rare
+            # Evitar forzar el parse completo de multipart gigantes (ej. uploads de varios GB)
+            content_length = request.content_length or 0
+            is_multipart = (request.content_type or '').lower().startswith('multipart/form-data')
+            # Umbral (5MB) para decidir si se omite parsing; configurable vía env LOGGING_FORM_PARSE_THRESHOLD
+            threshold = int(os.environ.get('LOGGING_FORM_PARSE_THRESHOLD', 5 * 1024 * 1024))
+            if is_multipart and content_length > threshold:
+                form_raw = {
+                    '_skipped': f'multipart ~{content_length} bytes (omitido para no bloquear subida)'
+                }
+            else:
+                # Esto puede disparar el parse completo del multipart; sólo se hace si es pequeño
+                form_raw = dict(request.form)
+        except Exception:  # pragma: no cover - muy raro
             params_raw, form_raw = {}, {}
         params = _scrub(params_raw)
         form = _scrub(form_raw)

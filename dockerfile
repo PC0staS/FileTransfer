@@ -23,5 +23,5 @@ EXPOSE 3000
 
 # Comando por defecto: usar Gunicorn con wsgi:app desde /app/code
 WORKDIR /app/code
-CMD ["gunicorn", "-b", "0.0.0.0:3000", "wsgi:app"]
+CMD ["gunicorn", "-b", "0.0.0.0:3000", "--timeout", "1800", "--graceful-timeout", "60", "--workers", "1", "--threads", "4", "wsgi:app"]
 

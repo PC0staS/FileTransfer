@@ -224,36 +224,66 @@ def get_user_files(user_id):
     return files
 
 def handle_file_upload(file, user_id):
-    """Manejar la subida de un archivo"""
+    """Manejar la subida de un archivo de forma segura y eficiente para archivos grandes.
+
+    - Usa escritura por chunks para no cargar el archivo completo en memoria.
+    - Valida un límite máximo opcional configurable por env MAX_UPLOAD_SIZE (bytes).
+    """
     if not file or file.filename == '':
         return {'error': 'No se seleccionó ningún archivo'}, 400
-    
+
     if not allowed_file(file.filename):
         return {'error': f'Tipo de archivo no permitido. Extensiones permitidas: {", ".join(sorted(ALLOWED_EXTENSIONS))}'}, 400
-    
+
+    # Límite opcional
+    try:
+        max_size_env = os.environ.get('MAX_UPLOAD_SIZE')
+        max_size = int(max_size_env) if max_size_env else None
+    except ValueError:
+        max_size = None
+
+    file_path = None  # para limpieza segura en caso de excepción
     try:
         original_filename = file.filename
         filename = secure_filename(original_filename)
-        # Añadir timestamp para evitar colisiones
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
         filename = timestamp + filename
-        
+
         user_dir = get_user_upload_dir(user_id)
         file_path = os.path.join(user_dir, filename)
-        
-        file.save(file_path)
-        
-        # Guardar metadatos con fecha de expiración
+
+        # Escritura por chunks
+        total_written = 0
+        chunk_size = 8 * 1024 * 1024  # 8MB
+        stream = file.stream  # werkzeug FileStorage stream
+        with open(file_path, 'wb') as f:
+            while True:
+                chunk = stream.read(chunk_size)
+                if not chunk:
+                    break
+                f.write(chunk)
+                total_written += len(chunk)
+                if max_size and total_written > max_size:
+                    f.close()
+                    os.remove(file_path)
+                    return {'error': f'Tamaño excede el máximo permitido ({format_file_size(max_size)})'}, 400
+
+        # Guardar metadatos
         save_file_metadata(user_id, filename, original_filename)
-        
+
         return {
             'success': True,
             'message': f'Archivo "{original_filename}" subido exitosamente. Expira en 5 días.',
             'filename': filename,
-            'size': format_file_size(os.path.getsize(file_path))
+            'size': format_file_size(total_written)
         }, 200
-        
     except Exception as e:
+        # Intentar limpiar archivo parcial
+        if file_path and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception:
+                pass
         return {'error': f'Error al subir el archivo: {str(e)}'}, 500
 
 def handle_file_download(filename, user_id):

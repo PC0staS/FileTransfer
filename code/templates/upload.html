@@ -53,7 +53,7 @@
                     </div>
 
                     <!-- Lista de archivos seleccionados -->
-                    <div id="filesList" class="mt-4" style="display: none;">
+                    <div id="filesList" class="mt-4 text-white" style="display: none;">
                         <h5><i class="bi bi-files"></i> Archivos seleccionados:</h5>
                         <div id="filesContainer"></div>
                     </div>
@@ -238,6 +238,14 @@ class FileUploader {
                 <div class="file-progress mt-2" style="display: none;">
                     <div class="file-progress-bar"></div>
                 </div>
+                <div class="file-status mt-2 small text-muted" style="display:none;">
+                    <span class="progress-percent">0%</span>
+                    <span class="sep">·</span>
+                    <span class="progress-speed">0 KB/s</span>
+                    <span class="sep">·</span>
+                    <span class="progress-eta">ETA --:--</span>
+                </div>
+                <div class="file-error text-danger small mt-1" style="display:none;"></div>
             </div>
             <button class="btn btn-outline-danger btn-sm" onclick="fileUploader.removeFile(${id})">
                 <i class="bi bi-x"></i>
@@ -301,7 +309,16 @@ class FileUploader {
         
         const progressBar = fileItem.querySelector('.file-progress-bar');
         const progressContainer = fileItem.querySelector('.file-progress');
+        const statusLine = fileItem.querySelector('.file-status');
+        const percentEl = fileItem.querySelector('.progress-percent');
+        const speedEl = fileItem.querySelector('.progress-speed');
+        const etaEl = fileItem.querySelector('.progress-eta');
         progressContainer.style.display = 'block';
+        statusLine.style.display = 'block';
+        // Guardar tiempo inicial para cálculo de velocidad / ETA
+        const startTime = performance.now();
+        let lastLoaded = 0;
+        let lastTime = startTime;
 
         try {
             const xhr = new XMLHttpRequest();
@@ -311,6 +328,28 @@ class FileUploader {
                     if (e.lengthComputable) {
                         const percent = (e.loaded / e.total) * 100;
                         progressBar.style.width = percent + '%';
+                        if (percentEl) percentEl.textContent = percent.toFixed(1) + '%';
+
+                        // Calcular velocidad media desde inicio
+                        const now = performance.now();
+                        const elapsedSec = (now - startTime) / 1000;
+                        const avgSpeed = e.loaded / (elapsedSec || 1); // bytes/seg
+                        // Pequeño cálculo de velocidad instantánea (delta)
+                        const deltaBytes = e.loaded - lastLoaded;
+                        const deltaTime = (now - lastTime) / 1000;
+                        let instSpeed = deltaBytes / (deltaTime || 1);
+                        // Suavizar: usar 70% instantánea + 30% promedio
+                        const blendedSpeed = (instSpeed * 0.7) + (avgSpeed * 0.3);
+                        if (speedEl) speedEl.textContent = this.formatSpeed(blendedSpeed);
+
+                        // ETA
+                        if (e.total > 0) {
+                            const remainingBytes = e.total - e.loaded;
+                            const etaSec = remainingBytes / (blendedSpeed || 1);
+                            if (etaEl) etaEl.textContent = 'ETA ' + this.formatETA(etaSec);
+                        }
+                        lastLoaded = e.loaded;
+                        lastTime = now;
                     }
                 });
                 // Asegurar que la barra llegue al 100% y quede animada suavemente.
@@ -319,18 +358,20 @@ class FileUploader {
                     progressBar.style.width = '100%';
                     // Dar un pequeño retardo para que la transición sea visible
                     setTimeout(() => {
-                        if (xhr.status === 200) {
-                            const response = JSON.parse(xhr.responseText);
-                            if (response.success) {
-                                fileItem.classList.add('border-success');
-                                progressBar.style.background = 'linear-gradient(90deg, #28a745, #20c997)';
-                                resolve(true);
-                            } else {
-                                this.showFileError(fileItem, response.error);
-                                resolve(false);
-                            }
+                        let jsonResp = null;
+                        try { jsonResp = JSON.parse(xhr.responseText); } catch(_) {}
+                        if (xhr.status === 200 && jsonResp && jsonResp.success) {
+                            fileItem.classList.add('border-success');
+                            progressBar.style.background = 'linear-gradient(90deg, #28a745, #20c997)';
+                            // Tiempo total / velocidad final
+                            const totalElapsedSec = (performance.now() - startTime) / 1000;
+                            const finalSpeed = file.size / (totalElapsedSec || 1);
+                            if (speedEl) speedEl.textContent = this.formatSpeed(finalSpeed) + ' (final)';
+                            if (etaEl) etaEl.textContent = 'Completado en ' + totalElapsedSec.toFixed(2) + 's';
+                            resolve(true);
                         } else {
-                            this.showFileError(fileItem, 'Error del servidor');
+                            const errMsg = (jsonResp && (jsonResp.error || jsonResp.message)) || 'Error del servidor';
+                            this.showFileError(fileItem, errMsg);
                             resolve(false);
                         }
                     }, 250);
@@ -361,6 +402,13 @@ class FileUploader {
         const progressBar = fileItem.querySelector('.file-progress-bar');
         progressBar.style.background = '#dc3545';
         progressBar.style.width = '100%';
+        const errorDiv = fileItem.querySelector('.file-error');
+        if (errorDiv) {
+            errorDiv.style.display = 'block';
+            errorDiv.textContent = error;
+        }
+        const etaEl = fileItem.querySelector('.progress-eta');
+        if (etaEl) etaEl.textContent = 'Falló';
     }
 
     formatFileSize(bytes) {
@@ -369,6 +417,29 @@ class FileUploader {
         const sizes = ['B', 'KB', 'MB', 'GB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    formatSpeed(bytesPerSec) {
+        if (!isFinite(bytesPerSec) || bytesPerSec < 0) return '0 KB/s';
+        const k = 1024;
+        if (bytesPerSec < k) return bytesPerSec.toFixed(0) + ' B/s';
+        const sizes = ['KB/s', 'MB/s', 'GB/s'];
+        let value = bytesPerSec / k; // KB/s
+        let idx = 0;
+        while (value >= k && idx < sizes.length - 1) {
+            value /= k;
+            idx++;
+        }
+        return value.toFixed(1) + ' ' + sizes[idx];
+    }
+
+    formatETA(sec) {
+        if (!isFinite(sec) || sec < 0) return '--:--';
+        if (sec < 1) return '<1s';
+        if (sec < 60) return sec.toFixed(0) + 's';
+        const m = Math.floor(sec / 60);
+        const s = Math.floor(sec % 60);
+        return `${m}:${s.toString().padStart(2,'0')}`;
     }
 }
 
