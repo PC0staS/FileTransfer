@@ -19,18 +19,21 @@ def init_database():
             nombre TEXT NOT NULL,
             email TEXT UNIQUE,
             password TEXT NOT NULL,
-            estado TEXT NOT NULL DEFAULT 'pendiente'
+            estado TEXT NOT NULL DEFAULT 'pendiente',
+            fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
 
-    # Migraciones ligeras para versiones anteriores (añadir columna estado si falta)
+    # Migraciones ligeras para versiones anteriores (añadir columnas si faltan)
     try:
         cursor.execute("PRAGMA table_info(usuarios)")
         cols = [r[1] for r in cursor.fetchall()]
         if 'estado' not in cols:
             cursor.execute("ALTER TABLE usuarios ADD COLUMN estado TEXT NOT NULL DEFAULT 'pendiente'")
+        if 'fecha_registro' not in cols:
+            cursor.execute("ALTER TABLE usuarios ADD COLUMN fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     except Exception as e:
-        print(f"Aviso migración columna estado: {e}")
+        print(f"Aviso migración columnas: {e}")
     
     conn.commit()
     conn.close()

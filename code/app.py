@@ -5,7 +5,7 @@ import json
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file, jsonify  # type: ignore
 from init_db import init_database as init_db
-from db_logic import insert_user, clear_db, check_user_login, set_user_status, get_user_by_id, get_all_users, get_user_stats, delete_user_completely
+from db_logic import insert_user, clear_db, check_user_login, set_user_status, get_user_by_id, get_all_users, get_user_stats, delete_user_completely, migrate_database
 from logging_config import setup_logging, attach_request_logging # type: ignore
 from werkzeug.security import generate_password_hash  # type: ignore
 from uploads import (
@@ -17,6 +17,7 @@ DB_PATH = '/app/db/database.db'  # ruta usada también en db_logic (mantener si 
 
 def main():
     init_db()
+    migrate_database()  # Ejecutar migraciones pendientes
     app = Flask(__name__)
 
     # Seguridad de cookies de sesión
@@ -375,6 +376,9 @@ def main():
         
         # Obtener estadísticas
         stats = get_user_stats()
+        
+        # Log para depuración
+        app.logger.info(f"Admin panel - Usuarios encontrados: {len(users)}, Stats: {stats}")
         
         return render_template('admin.html', users=users, stats=stats)
 

@@ -93,14 +93,57 @@ def get_user_by_id(user_id: int) -> Optional[Dict[str, str]]:
         return None
 
 
+def migrate_database():
+    """Ejecuta migraciones pendientes de la base de datos."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Verificar columnas existentes
+        cursor.execute("PRAGMA table_info(usuarios)")
+        columns = [row[1] for row in cursor.fetchall()]
+        print(f"[MIGRATION] Columnas actuales: {columns}")
+        
+        # Añadir fecha_registro si no existe
+        if 'fecha_registro' not in columns:
+            print("[MIGRATION] Añadiendo columna fecha_registro...")
+            cursor.execute("ALTER TABLE usuarios ADD COLUMN fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+            # Actualizar registros existentes con fecha actual
+            cursor.execute("UPDATE usuarios SET fecha_registro = CURRENT_TIMESTAMP WHERE fecha_registro IS NULL")
+            print("[MIGRATION] Columna fecha_registro añadida")
+        
+        conn.commit()
+        conn.close()
+        print("[MIGRATION] Migraciones completadas")
+        return True
+        
+    except Exception as e:
+        print(f"[MIGRATION] Error en migración: {e}")
+        return False
+
+
 def get_all_users(search: str = "", estado_filter: str = "") -> List[Dict]:
     """Obtiene todos los usuarios con filtros opcionales."""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        # Query base simple
-        query = "SELECT id, nombre, email, estado, fecha_registro FROM usuarios"
+        # Primero verificar qué columnas existen
+        cursor.execute("PRAGMA table_info(usuarios)")
+        columns = [row[1] for row in cursor.fetchall()]
+        
+        # Construir query basado en columnas disponibles
+        base_columns = "id, nombre, email, estado"
+        if 'fecha_registro' in columns:
+            query_columns = base_columns + ", fecha_registro"
+            has_fecha = True
+        else:
+            query_columns = base_columns
+            has_fecha = False
+            print("[DEBUG] Columna fecha_registro no encontrada, usando N/A")
+        
+        # Query base
+        query = f"SELECT {query_columns} FROM usuarios"
         params = []
         conditions = []
         
@@ -123,15 +166,18 @@ def get_all_users(search: str = "", estado_filter: str = "") -> List[Dict]:
         cursor.execute(query, params)
         rows = cursor.fetchall()
         
+        print(f"[DEBUG] get_all_users - Encontrados {len(rows)} usuarios")
+        
         users = []
         for row in rows:
-            users.append({
+            user_data = {
                 "id": row[0],
                 "nombre": row[1],
                 "email": row[2],
                 "estado": row[3],
-                "fecha_registro": row[4] if row[4] else 'N/A'
-            })
+                "fecha_registro": row[4] if has_fecha and len(row) > 4 and row[4] else 'N/A'
+            }
+            users.append(user_data)
         
         conn.close()
         return users
