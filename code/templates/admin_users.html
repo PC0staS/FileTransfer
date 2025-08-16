@@ -3,6 +3,14 @@
 {% block title %}Panel de Administración - Usuarios{% endblock %}
 
 {% block content %}
+<style>
+.d-flex.gap-2 {
+    gap: 0.5rem !important;
+}
+.form-select-sm {
+    min-width: 120px;
+}
+</style>
 <div class="container mt-4">
     <div class="row">
         <div class="col-12">
@@ -36,10 +44,10 @@
                         <div class="col-md-3">
                             <label for="estado" class="form-label">Estado:</label>
                             <select name="estado" id="estado" class="form-select">
-                                <option value="">Todos</option>
-                                <option value="pendiente" {{ 'selected' if request.args.get('estado') == 'pendiente' }}>Pendiente</option>
-                                <option value="activo" {{ 'selected' if request.args.get('estado') == 'activo' }}>Activo</option>
-                                <option value="rechazado" {{ 'selected' if request.args.get('estado') == 'rechazado' }}>Rechazado</option>
+                                <option value="" {{ 'selected' if not request.args.get('estado') else '' }}>Todos</option>
+                                <option value="pendiente" {{ 'selected' if request.args.get('estado') == 'pendiente' else '' }}>Pendiente</option>
+                                <option value="activo" {{ 'selected' if request.args.get('estado') == 'activo' else '' }}>Activo</option>
+                                <option value="rechazado" {{ 'selected' if request.args.get('estado') == 'rechazado' else '' }}>Rechazado</option>
                             </select>
                         </div>
                         <div class="col-md-6">

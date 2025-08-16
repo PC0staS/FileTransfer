@@ -400,9 +400,13 @@ def main():
         if not is_admin_session():
             return redirect(url_for('admin_login'))
         
-        # Obtener parámetros de filtro
+        # Obtener parámetros de filtro (vacíos por defecto para mostrar todos)
         search = request.args.get('search', '').strip()
         estado_filter = request.args.get('estado', '').strip()
+        
+        # Si no hay filtros, vaciar estado_filter para mostrar todos
+        if not search and not estado_filter:
+            estado_filter = ""
         
         # Obtener usuarios con filtros
         users = get_all_users(search=search, estado_filter=estado_filter)
