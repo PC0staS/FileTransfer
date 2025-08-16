@@ -5,7 +5,7 @@ import os
 import re
 import json
 from datetime import datetime, timedelta
-from flask import flash, session, request, jsonify, send_file # type: ignore
+from flask import flash, session, request, jsonify, send_file, Response # type: ignore
 import logging
 
 # Configuración de uploads
@@ -21,8 +21,8 @@ ALLOWED_EXTENSIONS = {
 # ------------------------- Subidas Resumibles (Chunks) -------------------------
 import uuid
 
-CHUNK_THRESHOLD = int(os.environ.get('CHUNK_UPLOAD_THRESHOLD_MB', '200')) * 1024 * 1024  # >200MB usa chunks
-DEFAULT_CHUNK_SIZE = int(os.environ.get('CHUNK_SIZE_MB', '8')) * 1024 * 1024  # 8MB
+CHUNK_THRESHOLD = int(os.environ.get('CHUNK_UPLOAD_THRESHOLD_MB', '512')) * 1024 * 1024  # >512MB usa chunks
+DEFAULT_CHUNK_SIZE = int(os.environ.get('CHUNK_SIZE_MB', '64')) * 1024 * 1024  # 64MB
 
 def _resumable_meta_path(user_id, upload_id):
     return os.path.join(get_user_upload_dir(user_id), f".upload_{upload_id}.json")
@@ -81,7 +81,7 @@ def append_chunk(user_id, upload_id, chunk_index, chunk_data, total_chunks=None)
             'received_bytes': meta['received_bytes']
         }, 409
 
-    with open(temp_path, 'ab') as f:
+    with open(temp_path, 'ab', buffering=8*1024*1024) as f:
         f.write(chunk_data)
     meta['received_bytes'] += len(chunk_data)
     save_resumable_meta(user_id, meta)
@@ -365,24 +365,40 @@ def handle_file_upload(file, user_id):
         logger.info("[upload] start user=%s original='%s' target='%s' max_size=%s", user_id, original_filename, filename, format_file_size(max_size) if max_size else 'None')
         chunk_size = 8 * 1024 * 1024  # 8MB
         stream = file.stream  # werkzeug FileStorage stream
-        with open(file_path, 'wb') as f:
+        # Prealocación si se conoce el tamaño total (no chunked)
+        total_size_header = request.headers.get('X-Upload-Length')
+        preallocate = False
+        total_int = 0
+        if total_size_header and total_size_header.isdigit():
+            try:
+                total_int = int(total_size_header)
+                preallocate = total_int > 0
+            except Exception:
+                preallocate = False
+        with open(file_path, 'wb', buffering=8*1024*1024) as f:
+            if preallocate and total_int > 0:
+                try:
+                    f.truncate(total_int)
+                    f.seek(0)
+                except Exception:
+                    pass
             while True:
                 chunk = stream.read(chunk_size)
                 if not chunk:
                     break
                 f.write(chunk)
                 total_written += len(chunk)
-                # Log cada ~512MB para no saturar
-                if total_written % (512 * 1024 * 1024) < chunk_size:
+                # Log cada ~1GB
+                if total_written % (1024 * 1024 * 1024) < chunk_size:
                     logger.info("[upload] progress user=%s file='%s' written=%s", user_id, filename, format_file_size(total_written))
-                if max_size and total_written > max_size:
-                    f.close()
-                    try:
-                        os.remove(file_path)
-                    except Exception:
-                        pass
-                    logger.warning("[upload] aborted user=%s file='%s' reason=max_size_exceeded written=%s limit=%s", user_id, filename, total_written, max_size)
-                    return {'error': f'Tamaño excede el máximo permitido ({format_file_size(max_size)})', 'error_code': 'MAX_SIZE_EXCEEDED'}, 400
+            if max_size and total_written > max_size:
+                f.close()
+                try:
+                    os.remove(file_path)
+                except Exception:
+                    pass
+                logger.warning("[upload] aborted user=%s file='%s' reason=max_size_exceeded written=%s limit=%s", user_id, filename, total_written, max_size)
+                return {'error': f'Tamaño excede el máximo permitido ({format_file_size(max_size)})', 'error_code': 'MAX_SIZE_EXCEEDED'}, 400
 
         # Guardar metadatos
         save_file_metadata(user_id, filename, original_filename)
@@ -415,7 +431,7 @@ def handle_file_download(filename, user_id):
     # Obtener nombre original sin timestamp
     display_name = filename.split('_', 3)[-1] if '_' in filename else filename
     
-    return send_file(file_path, as_attachment=True, download_name=display_name)
+    return range_or_full_file(file_path, display_name)
 
 def find_file_any_user(filename):
     """Buscar un archivo por nombre dentro de todos los directorios de usuarios.
@@ -454,7 +470,64 @@ def handle_public_download(filename):
     file_path, display_name = find_file_any_user(filename)
     if not file_path:
         return None
-    return send_file(file_path, as_attachment=True, download_name=display_name)
+    return range_or_full_file(file_path, display_name)
+
+# ---------------- Descarga con soporte Range (parcial) -----------------
+def range_or_full_file(path, download_name):
+    """Soporta descargas parciales usando header Range para permitir reanudación y aceleradores.
+    """
+    try:
+        file_size = os.path.getsize(path)
+        range_header = request.headers.get('Range', None)
+        if not range_header:
+            # Respuesta completa normal
+            resp = send_file(path, as_attachment=True, download_name=download_name, conditional=True)
+            resp.headers['Accept-Ranges'] = 'bytes'
+            return resp
+
+        # Parse ejemplo: bytes=START-END
+        import re as _re
+        m = _re.match(r'bytes=(\d*)-(\d*)', range_header)
+        if not m:
+            return send_file(path, as_attachment=True, download_name=download_name)
+        start_str, end_str = m.groups()
+        if start_str == '' and end_str == '':
+            return send_file(path, as_attachment=True, download_name=download_name)
+        if start_str == '':
+            # últimos N bytes
+            length = int(end_str)
+            start = max(0, file_size - length)
+            end = file_size - 1
+        else:
+            start = int(start_str)
+            end = int(end_str) if end_str else file_size - 1
+        if start > end or start >= file_size:
+            return Response(status=416, headers={
+                'Content-Range': f'bytes */{file_size}'
+            })
+        chunk_size = 1024 * 1024  # 1MB
+        def generate():
+            with open(path, 'rb') as f:
+                f.seek(start)
+                remaining = end - start + 1
+                while remaining > 0:
+                    read_size = min(chunk_size, remaining)
+                    data = f.read(read_size)
+                    if not data:
+                        break
+                    remaining -= len(data)
+                    yield data
+        rv = Response(generate(), status=206, mimetype='application/octet-stream')
+        rv.headers['Content-Range'] = f'bytes {start}-{end}/{file_size}'
+        rv.headers['Accept-Ranges'] = 'bytes'
+        rv.headers['Content-Length'] = str(end - start + 1)
+        rv.headers['Content-Disposition'] = f"attachment; filename={download_name}"
+        return rv
+    except Exception:
+        # Fallback completo si algo falla
+        resp = send_file(path, as_attachment=True, download_name=download_name)
+        resp.headers['Accept-Ranges'] = 'bytes'
+        return resp
 
 def delete_user_file(filename, user_id):
     """Eliminar un archivo del usuario y sus metadatos"""

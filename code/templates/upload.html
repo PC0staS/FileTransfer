@@ -330,33 +330,29 @@ class FileUploader {
             const xhr = new XMLHttpRequest();
             
             return new Promise((resolve) => {
+                let lastUI = 0;
                 xhr.upload.addEventListener('progress', (e) => {
-                    if (e.lengthComputable) {
-                        const percent = (e.loaded / e.total) * 100;
-                        progressBar.style.width = percent + '%';
-                        if (percentEl) percentEl.textContent = percent.toFixed(1) + '%';
-
-                        // Calcular velocidad media desde inicio
-                        const now = performance.now();
-                        const elapsedSec = (now - startTime) / 1000;
-                        const avgSpeed = e.loaded / (elapsedSec || 1); // bytes/seg
-                        // Pequeño cálculo de velocidad instantánea (delta)
-                        const deltaBytes = e.loaded - lastLoaded;
-                        const deltaTime = (now - lastTime) / 1000;
-                        let instSpeed = deltaBytes / (deltaTime || 1);
-                        // Suavizar: usar 70% instantánea + 30% promedio
-                        const blendedSpeed = (instSpeed * 0.7) + (avgSpeed * 0.3);
-                        if (speedEl) speedEl.textContent = this.formatSpeed(blendedSpeed);
-
-                        // ETA
-                        if (e.total > 0) {
-                            const remainingBytes = e.total - e.loaded;
-                            const etaSec = remainingBytes / (blendedSpeed || 1);
-                            if (etaEl) etaEl.textContent = 'ETA ' + this.formatETA(etaSec);
-                        }
-                        lastLoaded = e.loaded;
-                        lastTime = now;
+                    if (!e.lengthComputable) return;
+                    const now = performance.now();
+                    if (now - lastUI < 200 && e.loaded !== e.total) return; // throttle 200ms (except final)
+                    lastUI = now;
+                    const percent = (e.loaded / e.total) * 100;
+                    progressBar.style.width = percent + '%';
+                    if (percentEl) percentEl.textContent = percent.toFixed(1) + '%';
+                    const elapsedSec = (now - startTime) / 1000;
+                    const avgSpeed = e.loaded / (elapsedSec || 1);
+                    const deltaBytes = e.loaded - lastLoaded;
+                    const deltaTime = (now - lastTime) / 1000;
+                    const instSpeed = deltaBytes / (deltaTime || 1);
+                    const blendedSpeed = (instSpeed * 0.6) + (avgSpeed * 0.4);
+                    if (speedEl) speedEl.textContent = this.formatSpeed(blendedSpeed);
+                    if (e.total > 0) {
+                        const remainingBytes = e.total - e.loaded;
+                        const etaSec = remainingBytes / (blendedSpeed || 1);
+                        if (etaEl) etaEl.textContent = 'ETA ' + this.formatETA(etaSec);
                     }
+                    lastLoaded = e.loaded;
+                    lastTime = now;
                 });
                 // Asegurar que la barra llegue al 100% y quede animada suavemente.
                 xhr.addEventListener('load', () => {
