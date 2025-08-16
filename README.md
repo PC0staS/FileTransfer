@@ -1,15 +1,46 @@
-# FileTransfer
 
-Servidor de intercambio de archivos ligero usando Flask.
+<div align="center">
+  <img src="https://img.shields.io/badge/Flask-FileTransfer-blue?style=for-the-badge&logo=flask" alt="Flask FileTransfer" />
+  <h1>FileTransfer</h1>
+  <p>Servidor ligero y multiplataforma para compartir archivos en red local o privada, con interfaz web moderna y despliegue instantáneo vía Docker Compose.</p>
+</div>
 
-Características principales
-- Autenticación básica de usuarios.
-- Subida mediante formulario o drag & drop con barra de progreso (AJAX).
-- Soporta cualquier tipo de archivo (sin limitación de extensión ni restricciones de tamaño).
-- Almacenamiento por usuario en `uploads/user_{id}/`.
-- Enlaces de descarga directos y botón "copiar enlace" con fallback para macOS/Safari.
-- Expiración automática de archivos: 5 días desde la subida (se puede cambiar fácilmente en `code/uploads.py`).
-- Base de datos SQLite persistente en `db/database.db`.
+---
+
+## 🚀 Instalación y despliegue rápido
+
+1. **Clona este repositorio:**
+  ```powershell
+  git clone https://github.com/PC0staS/FileTransfer.git
+  cd FileTransfer
+  ```
+
+2. **Configura tu IP local en el archivo `.env`:**
+  ```env
+  # .env
+  HOST_IP=192.168.1.100  # Cambia por la IP de tu equipo en la red
+  ```
+  > Puedes ver tu IP ejecutando `ipconfig` (Windows) o `ip a` (Linux/Mac).
+
+3. **Levanta el servicio con Docker Compose:**
+  ```powershell
+  docker-compose up --build -d
+  ```
+
+4. **Accede desde cualquier navegador en la red:**
+  - [http://TU_IP_LOCAL:3456](http://TU_IP_LOCAL:3456)
+  - Ejemplo: [http://192.168.1.100:3456](http://192.168.1.100:3456)
+
+---
+
+## ✨ Características principales
+- Autenticación básica de usuarios
+- Subida mediante formulario o drag & drop con barra de progreso (AJAX)
+- Soporta cualquier tipo de archivo (sin limitación de extensión ni restricciones de tamaño)
+- Almacenamiento por usuario en `uploads/user_{id}/`
+- Enlaces de descarga directos y botón "copiar enlace" con fallback para macOS/Safari
+- Expiración automática de archivos: 5 días desde la subida (configurable)
+- Base de datos SQLite persistente en `db/database.db`
 
 Estructura del repositorio
 ```
@@ -29,23 +60,12 @@ Estructura del repositorio
   uploads/  (mount/volume for file storage)
 ```
 
-Requisitos
-- Docker / Docker Compose (recomendado)
-- O Python 3.8+ y pip si quieres ejecutar sin Docker
 
-Quick start (con Docker Compose)
+## 🛠️ Requisitos
+- Docker y Docker Compose (recomendado)
+- O Python 3.8+ y pip si prefieres ejecutar sin Docker
 
-Abre PowerShell en la carpeta del repo y ejecuta:
-
-```powershell
-# Construir y levantar servicios en background
-docker-compose up --build -d
-
-# Ver logs
-docker-compose logs -f
-```
-
-Accede a http://localhost:3000
+---
 
 Ejecutar localmente sin Docker (desarrollo)
 
@@ -69,8 +89,10 @@ $env:FLASK_APP = 'app.py'
 python app.py
 ```
 
-Variables / archivos importantes
-- `.secret_key` (en la raíz del repo): valor persistente del `SECRET_KEY` de Flask (si no existe, la app intenta leer `.env` o genera uno temporal).
+
+## 📦 Variables y archivos importantes
+- `.env`: aquí defines la IP local (`HOST_IP`) y otras variables de entorno.
+- `.secret_key`: valor persistente del `SECRET_KEY` de Flask (si no existe, la app intenta leer `.env` o genera uno temporal).
 - `db/database.db`: archivo SQLite que guarda usuarios y metadatos.
 - `uploads/` (montado en Docker): directorio donde se guardan los archivos por usuario.
 
@@ -155,12 +177,16 @@ Si pierdes usuarios tras reiniciar contenedor:
 * Comprueba permisos (UID dentro del contenedor pueda escribir). Ej: `chmod 755 db`.
 * Verifica que no montas un volumen vacío encima después (evitar nombres de volumen anónimos).
 
+
 ## 4. Variables de entorno y configuración
 | Variable        | Uso                                   | Default / Comentario |
 |-----------------|----------------------------------------|----------------------|
+| HOST_IP         | IP local para exponer el servicio      | Debes definirla en `.env` |
 | SECRET_KEY      | Firmar cookies Flask                   | Busca `.env` / `.secret_key` |
 | FLASK_ENV       | Modo (production/development)          | production            |
 | PYTHONUNBUFFERED| Logs inmediatos                        | 1                    |
+
+> **IMPORTANTE:** Nunca pongas tu IP directamente en `docker-compose.yml`. Usa siempre la variable `${HOST_IP}` y edita solo el archivo `.env` para compartir tu configuración sin exponer datos personales.
 
 Modificar expiración: en `uploads.py` busca `timedelta(days=5)`.
 
@@ -192,7 +218,7 @@ Recomendado para usar `https://files.tu-dominio.com` sin abrir puertos.
   credentials-file: /home/pi/.cloudflared/<TUNNEL-UUID>.json
   ingress:
     - hostname: files.tu-dominio.com
-     service: http://localhost:3000
+     service: http://localhost:3456
     - service: http_status:404
   ```
 5. Crear DNS (Cloudflare lo añade automáticamente):
@@ -251,21 +277,21 @@ Recomendado para usar `https://files.tu-dominio.com` sin abrir puertos.
 ## 9. API (curl)
 Subida (sesión iniciada; requiere cookie de login):
 ```bash
-curl -F "file=@/ruta/miarchivo.txt" http://localhost:3000/api/upload_progress
+curl -F "file=@/ruta/miarchivo.txt" http://localhost:3456/api/upload_progress
 ```
 Eliminar archivo:
 ```bash
 curl -X POST -H 'Content-Type: application/json' \
   -d '{"filename":"20240101_120000_miarchivo.txt"}' \
-  http://localhost:3000/api/delete_file
+  http://localhost:3456/api/delete_file
 ```
 Limpiar expirados:
 ```bash
-curl -X POST http://localhost:3000/api/cleanup_expired
+curl -X POST http://localhost:3456/api/cleanup_expired
 ```
 Descarga pública:
 ```bash
-curl -O http://localhost:3000/download/20240101_120000_miarchivo.txt
+curl -O http://localhost:3456/download/20240101_120000_miarchivo.txt
 ```
 
 ## 10. Limpieza programada (cron)
