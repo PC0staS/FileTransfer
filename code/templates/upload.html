@@ -330,12 +330,9 @@ class FileUploader {
             const xhr = new XMLHttpRequest();
             
             return new Promise((resolve) => {
-                let lastUI = 0;
                 xhr.upload.addEventListener('progress', (e) => {
                     if (!e.lengthComputable) return;
                     const now = performance.now();
-                    if (now - lastUI < 200 && e.loaded !== e.total) return; // throttle 200ms (except final)
-                    lastUI = now;
                     const percent = (e.loaded / e.total) * 100;
                     progressBar.style.width = percent + '%';
                     if (percentEl) percentEl.textContent = percent.toFixed(1) + '%';
@@ -344,7 +341,7 @@ class FileUploader {
                     const deltaBytes = e.loaded - lastLoaded;
                     const deltaTime = (now - lastTime) / 1000;
                     const instSpeed = deltaBytes / (deltaTime || 1);
-                    const blendedSpeed = (instSpeed * 0.6) + (avgSpeed * 0.4);
+                    const blendedSpeed = (instSpeed * 0.5) + (avgSpeed * 0.5);
                     if (speedEl) speedEl.textContent = this.formatSpeed(blendedSpeed);
                     if (e.total > 0) {
                         const remainingBytes = e.total - e.loaded;

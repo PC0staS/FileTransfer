@@ -505,7 +505,12 @@ def range_or_full_file(path, download_name):
             return Response(status=416, headers={
                 'Content-Range': f'bytes */{file_size}'
             })
-        chunk_size = 1024 * 1024  # 1MB
+        # Tamaño de lectura por chunk configurable (default 4MB) para reducir syscalls
+        try:
+            chunk_mb = int(os.environ.get('RANGE_CHUNK_SIZE_MB', '4'))
+        except ValueError:
+            chunk_mb = 4
+        chunk_size = max(256*1024, min(chunk_mb * 1024 * 1024, 32 * 1024 * 1024))  # entre 256KB y 32MB
         def generate():
             with open(path, 'rb') as f:
                 f.seek(start)
