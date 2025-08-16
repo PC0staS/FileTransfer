@@ -96,6 +96,7 @@ def get_user_by_id(user_id: int) -> Optional[Dict[str, str]]:
 def migrate_database():
     """Ejecuta migraciones pendientes de la base de datos."""
     try:
+        print("[MIGRATION] Iniciando migraciones de base de datos...")
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
@@ -111,10 +112,12 @@ def migrate_database():
             # Actualizar registros existentes con fecha actual
             cursor.execute("UPDATE usuarios SET fecha_registro = CURRENT_TIMESTAMP WHERE fecha_registro IS NULL")
             print("[MIGRATION] Columna fecha_registro añadida")
+        else:
+            print("[MIGRATION] Columna fecha_registro ya existe")
         
         conn.commit()
         conn.close()
-        print("[MIGRATION] Migraciones completadas")
+        print("[MIGRATION] Migraciones completadas exitosamente")
         return True
         
     except Exception as e:
@@ -223,10 +226,16 @@ def delete_user_completely(user_id: int) -> bool:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        # Primero eliminar archivos de la tabla
-        cursor.execute('DELETE FROM archivos WHERE user_id = ?', (user_id,))
+        # Verificar si existe tabla de archivos antes de eliminar
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='archivos'")
+        table_exists = cursor.fetchone() is not None
         
-        # Luego eliminar el usuario
+        if table_exists:
+            # Eliminar archivos de la tabla si existe
+            cursor.execute('DELETE FROM archivos WHERE user_id = ?', (user_id,))
+            print(f"[DEBUG] Eliminados archivos de BD para usuario {user_id}")
+        
+        # Eliminar el usuario
         cursor.execute('DELETE FROM usuarios WHERE id = ?', (user_id,))
         
         conn.commit()
@@ -241,8 +250,11 @@ def delete_user_completely(user_id: int) -> bool:
             if os.path.exists(user_dir):
                 try:
                     shutil.rmtree(user_dir)
+                    print(f"[DEBUG] Directorio {user_dir} eliminado")
                 except Exception as e:
                     print(f"Error eliminando directorio {user_dir}: {e}")
+            else:
+                print(f"[DEBUG] Directorio {user_dir} no existía")
         
         return success
     except Exception as e:
