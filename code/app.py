@@ -341,7 +341,7 @@ def main():
         except Exception:
             flash('Email o contraseña incorrectos', 'error')
         # Registrar intento fallido tras procesar
-        register_failed_login(email) # type: ignore
+    register_failed_login(email) # type: ignore
     return redirect(url_for('login'))
 
     # --------------------- Admin: aprobación usuarios ---------------------
