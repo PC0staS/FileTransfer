@@ -480,7 +480,17 @@ class FileUploader {
 
             const ok = await promise;
             if (!ok) return false;
-            chunkIndex++;
+            // Si backend devuelve next_index usarlo (soporte tamaños variables)
+            try {
+                const parsed = JSON.parse(xhr.responseText);
+                if (parsed.next_index !== undefined) {
+                    chunkIndex = parsed.next_index;
+                } else {
+                    chunkIndex++;
+                }
+            } catch(_) {
+                chunkIndex++;
+            }
 
             // Ajuste adaptativo de chunk: intentar que cada chunk dure ~1s
             const chunkDuration = (performance.now() - chunkStartTime) / 1000;

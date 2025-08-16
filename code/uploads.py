@@ -42,7 +42,8 @@ def init_resumable_upload(user_id, original_name, total_size):
         'total_size': total_size,
         'received_bytes': 0,
         'chunk_size': DEFAULT_CHUNK_SIZE,
-        'started_at': datetime.now().isoformat()
+        'started_at': datetime.now().isoformat(),
+        'next_index': 0  # permitimos tamaños de chunk variables
     }
     with open(_resumable_meta_path(user_id, upload_id), 'w', encoding='utf-8') as f:
         json.dump(meta, f)
@@ -73,7 +74,7 @@ def append_chunk(user_id, upload_id, chunk_index, chunk_data, total_chunks=None)
     temp_path = _temp_file_path(user_id, upload_id)
 
     # Validar consistencia de tamaño ya recibido vs índice
-    expected_index = meta['received_bytes'] // meta['chunk_size']
+    expected_index = meta.get('next_index', meta['received_bytes'] // meta.get('chunk_size', 1))
     if chunk_index != expected_index:
         return {
             'error': 'Índice de chunk inesperado',
@@ -84,13 +85,15 @@ def append_chunk(user_id, upload_id, chunk_index, chunk_data, total_chunks=None)
     with open(temp_path, 'ab', buffering=8*1024*1024) as f:
         f.write(chunk_data)
     meta['received_bytes'] += len(chunk_data)
+    meta['next_index'] = expected_index + 1
     save_resumable_meta(user_id, meta)
 
     completed = meta['received_bytes'] >= meta['total_size']
     return {
         'success': True,
         'received_bytes': meta['received_bytes'],
-        'completed': completed,
+    'completed': completed,
+    'next_index': meta['next_index'],
         'total_size': meta['total_size']
     }, 200
 
