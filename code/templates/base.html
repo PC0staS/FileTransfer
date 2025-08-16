@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Aplicación web moderna con Docker">
+    <meta name="author" content="Tu Nombre">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    
+    <title>{% block title %}Aplicación Moderna{% endblock %} | Docker App</title>
+</head>
+<body>
+    <!-- Navbar moderna -->
+    <nav class="navbar navbar-expand-lg glass-effect fixed-top">
+        <div class="container">
+            <a class="navbar-brand text-gradient" href="/">
+                <i class="bi bi-rocket-takeoff"></i> DockerApp
+            </a>
+            <div class="navbar-nav ms-auto">
+                {% if session.get('user_id') %}
+                    <a class="nav-link" href="/dashboard">
+                        <i class="bi bi-grid-3x3-gap"></i> Dashboard
+                    </a>
+                    <a class="nav-link" href="/logout">
+                        <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
+                    </a>
+                {% else %}
+                    <a class="nav-link" href="/login">
+                        <i class="bi bi-box-arrow-in-right"></i> Iniciar Sesión
+                    </a>
+                    <a class="nav-link" href="/register">
+                        <i class="bi bi-person-plus"></i> Registrarse
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenido principal -->
+    <main style="padding-top: 100px;">
+        {%- block content -%} {%- endblock -%}
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center py-4 mt-5">
+        <div class="container">
+            <div class="glass-effect p-3 rounded-4">
+                <p class="mb-0" style="color: var(--text-secondary);">
+                    <i class="bi bi-heart-fill text-danger"></i> 
+                    Hecho con amor y Docker
+                    <i class="bi bi-docker text-primary"></i>
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS Bundle (with Popper) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JavaScript -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    
+    <!-- Script para animaciones -->
+    <script>
+        // Añadir animaciones cuando se carga la página
+        document.addEventListener('DOMContentLoaded', function() {
+            const elements = document.querySelectorAll('.card, .hero-section, .dashboard-header');
+            elements.forEach((el, index) => {
+                setTimeout(() => {
+                    el.classList.add('fade-in-up');
+                }, index * 100);
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+services:
+  web:
+    build: .
+    image: pcostas/prueba-docker:latest
+    container_name: prueba-flask
+    ports:
+      - "3000:3000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - FLASK_ENV=production
+    restart: always

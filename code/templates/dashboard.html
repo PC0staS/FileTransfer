@@ -1,0 +1,152 @@
+{%- extends "base.html" -%}
+
+{%- block title -%}Dashboard - {{ username }}{%- endblock -%}
+
+{%- block content -%}
+<div class="container">
+    <!-- Header del Dashboard -->
+    <div class="dashboard-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="dashboard-welcome">
+                    <i class="bi bi-person-circle text-primary"></i> 
+                    ¡Hola, {{ username }}!
+                </h1>
+                <p class="dashboard-subtitle">
+                    Bienvenido a tu panel de control. Aquí puedes gestionar tu cuenta y explorar las funcionalidades.
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="/logout" class="btn btn-outline-danger">
+                    <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mensajes flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert {{ 'alert-success' if category == 'success' else 'alert-danger' }} alert-dismissible fade show" role="alert">
+                    <i class="bi {{ 'bi-check-circle' if category == 'success' else 'bi-exclamation-triangle' }}"></i>
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Cards de estadísticas -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-person-check text-success" style="font-size: 3rem;"></i>
+                    <h5 class="card-title mt-3">Estado de Sesión</h5>
+                    <p class="card-text">Tu sesión está activa y segura</p>
+                    <span class="badge bg-success">Conectado</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-shield-check text-primary" style="font-size: 3rem;"></i>
+                    <h5 class="card-title mt-3">Seguridad</h5>
+                    <p class="card-text">Tu cuenta está protegida</p>
+                    <span class="badge bg-primary">Seguro</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-server text-info" style="font-size: 3rem;"></i>
+                    <h5 class="card-title mt-3">Tecnología</h5>
+                    <p class="card-text">Flask + Docker + SQLite</p>
+                    <span class="badge bg-info">Moderno</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de acciones -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-gear"></i> Panel de Control
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info" role="alert">
+                        <h6 class="alert-heading">
+                            <i class="bi bi-info-circle"></i> ¡Bienvenido al Dashboard!
+                        </h6>
+                        <p class="mb-2">Has iniciado sesión exitosamente en la aplicación.</p>
+                        <small>Desde aquí puedes explorar todas las funcionalidades disponibles.</small>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="glass-effect p-3 rounded-3 text-center">
+                                <i class="bi bi-database text-warning" style="font-size: 2rem;"></i>
+                                <h6 class="mt-2">Base de Datos</h6>
+                                <button class="btn btn-warning btn-sm" onclick="location.href='/clear_db'">
+                                    <i class="bi bi-trash"></i> Limpiar DB
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <div class="glass-effect p-3 rounded-3 text-center">
+                                <i class="bi bi-house text-primary" style="font-size: 2rem;"></i>
+                                <h6 class="mt-2">Inicio</h6>
+                                <a href="/" class="btn btn-primary btn-sm">
+                                    <i class="bi bi-arrow-left"></i> Ir al Inicio
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-info-circle"></i> Información de Usuario
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-person"></i> Usuario
+                            </div>
+                            <strong>{{ username }}</strong>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-clock"></i> Sesión
+                            </div>
+                            <span class="badge bg-success">Activa</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-server"></i> Servidor
+                            </div>
+                            <span class="badge bg-info">Docker</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{%- endblock -%}

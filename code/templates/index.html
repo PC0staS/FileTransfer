@@ -1,0 +1,152 @@
+{%- extends "base.html" -%}
+
+{%- block title -%}Inicio{%- endblock -%}
+
+{%- block content -%}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <h1 class="hero-title">
+                    Bienvenido a DockerApp
+                </h1>
+                <p class="hero-subtitle">
+                    Una aplicación web moderna construida con Flask, Docker y SQLite. 
+                    Experimenta la potencia de la containerización con un diseño elegante y funcional.
+                </p>
+                
+                <!-- Mensajes flash -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert {{ 'alert-success' if category == 'success' else 'alert-danger' }} alert-dismissible fade show" role="alert">
+                                <i class="bi {{ 'bi-check-circle' if category == 'success' else 'bi-exclamation-triangle' }}"></i>
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <!-- Botones de acción principales -->
+                <div class="row justify-content-center mt-4">
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 text-center">
+                            <div class="card-body d-flex flex-column">
+                                <div class="mb-3">
+                                    <i class="bi bi-box-arrow-in-right" style="font-size: 3rem; color: var(--accent-color);"></i>
+                                </div>
+                                <h5 class="card-title">Iniciar Sesión</h5>
+                                <p class="card-text flex-grow-1">¿Ya tienes una cuenta? Accede a tu panel personalizado.</p>
+                                <a href="/login" class="btn btn-success btn-lg">
+                                    <i class="bi bi-arrow-right"></i> Iniciar Sesión
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 text-center">
+                            <div class="card-body d-flex flex-column">
+                                <div class="mb-3">
+                                    <i class="bi bi-person-plus" style="font-size: 3rem; color: var(--primary-color);"></i>
+                                </div>
+                                <h5 class="card-title">Registrarse</h5>
+                                <p class="card-text flex-grow-1">¿Nuevo usuario? Únete a nosotros y crea tu cuenta.</p>
+                                <a href="/register" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-arrow-right"></i> Registrarse
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Características Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 text-center mb-5">
+                <h2 class="text-gradient mb-4">Tecnologías Utilizadas</h2>
+                <p style="color: var(--text-secondary); font-weight: 400;">Descubre las tecnologías que hacen posible esta aplicación</p>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 text-center">
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <i class="bi bi-box" style="font-size: 4rem; color: #0db7ed;"></i>
+                        </div>
+                        <h5 class="card-title">Docker</h5>
+                        <p class="card-text">Containerización para un despliegue consistente y escalable en cualquier entorno.</p>
+                        <div class="mt-auto">
+                            <span class="badge bg-primary">Containerización</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 text-center">
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <i class="bi bi-fire" style="font-size: 4rem; color: #ff6b6b;"></i>
+                        </div>
+                        <h5 class="card-title">Flask</h5>
+                        <p class="card-text">Framework web minimalista y poderoso de Python para desarrollo ágil y eficiente.</p>
+                        <div class="mt-auto">
+                            <span class="badge bg-success">Backend</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 text-center">
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <i class="bi bi-database" style="font-size: 4rem; color: #ffd93d;"></i>
+                        </div>
+                        <h5 class="card-title">SQLite</h5>
+                        <p class="card-text">Base de datos embebida, ligera y confiable para almacenamiento de datos local.</p>
+                        <div class="mt-auto">
+                            <span class="badge bg-warning">Base de Datos</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Características adicionales -->
+        <div class="row mt-5">
+            <div class="col-md-6 mb-3">
+                <div class="glass-effect p-4 rounded-4">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-shield-check text-success me-3" style="font-size: 2rem;"></i>
+                        <div>
+                            <h6 class="mb-1">Seguridad</h6>
+                            <small class="text-secondary">Autenticación segura y manejo de sesiones</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="glass-effect p-4 rounded-4">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-phone text-primary me-3" style="font-size: 2rem;"></i>
+                        <div>
+                            <h6 class="mb-1">Responsive</h6>
+                            <small class="text-secondary">Diseño adaptable a todos los dispositivos</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{%- endblock -%}

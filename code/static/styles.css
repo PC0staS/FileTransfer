@@ -1,0 +1,535 @@
+/* Importar fuentes modernas */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* Modal fixes: ensure Bootstrap modal is centered, constrained and above other elements
+   These overrides prevent custom global styles from making the modal full-screen or unclosable. */
+.modal {
+    /* Use flex centering so dialog doesn't stretch to full height */
+    position: fixed;
+    inset: 0; /* top:0; right:0; bottom:0; left:0; */
+    display: none; /* bootstrap toggles .show */
+    z-index: 2000 !important;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.show {
+    display: flex;
+}
+
+.modal-backdrop {
+    z-index: 1990 !important;
+    background-color: rgba(0,0,0,0.45) !important;
+    position: fixed;
+}
+
+.modal-dialog {
+    max-width: 540px;
+    margin: 0.5rem; /* small gap on mobile */
+}
+
+.modal-dialog-centered {
+    /* keep using Bootstrap centering but avoid forcing min-height */
+    display: flex;
+    align-items: center;
+}
+
+.modal-content {
+    border-radius: 12px;
+    overflow: auto;
+    box-shadow: 0 10px 30px rgba(2,6,23,0.6);
+    max-height: 90vh; /* prevent content from forcing full-screen */
+}
+
+/* Ensure close button is visible and clickable */
+.modal .btn-close {
+    filter: none;
+}
+
+/* Allow scrolling inside modal if content is tall */
+.modal.show .modal-dialog {
+    transform: translateY(0) !important;
+}
+
+/* Ensure body doesn't get unexpected stacking context that hides modal */
+body.modal-open {
+    overflow: hidden;
+}
+
+:root {
+    --primary-color: #6366f1;
+    --primary-dark: #4f46e5;
+    --secondary-color: #f8fafc;
+    --accent-color: #10b981;
+    --danger-color: #ef4444;
+    --warning-color: #f59e0b;
+    --dark-bg: #0f172a;
+    --card-bg: #1e293b;
+    --text-primary: #f1f5f9;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --border-color: #334155;
+    --shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    --gradient-bg: linear-gradient(135deg, #1e293b 0%, #0f172a 50%, #020617 100%);
+    --gradient-card: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--gradient-bg);
+    color: var(--text-primary);
+    min-height: 100vh;
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+/* Animaciones globales */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.fade-in-up {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+/* Efectos de fondo */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        radial-gradient(circle at 20% 80%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(120, 119, 198, 0.08) 0%, transparent 50%);
+    z-index: -1;
+}
+
+/* Cards mejoradas */
+.card {
+    background: var(--gradient-card);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 32px 64px -12px rgba(0, 0, 0, 0.25);
+}
+
+.card-header {
+    background: transparent;
+    border-bottom: 1px solid var(--border-color);
+    border-radius: 20px 20px 0 0 !important;
+    padding: 2rem;
+}
+
+.card-body {
+    padding: 2rem;
+}
+
+/* Botones modernos */
+.btn {
+    font-weight: 600;
+    letter-spacing: 0.025em;
+    border-radius: 12px;
+    padding: 0.75rem 2rem;
+    transition: all 0.3s ease;
+    border: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.btn:hover::before {
+    left: 100%;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, var(--primary-dark) 0%, #3730a3 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.6);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, var(--accent-color) 0%, #059669 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.6);
+}
+
+.btn-outline-secondary {
+    background: rgba(148, 163, 184, 0.1);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+}
+
+.btn-outline-secondary:hover {
+    background: rgba(148, 163, 184, 0.2);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+}
+
+.btn-link {
+    color: var(--primary-color) !important;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.btn-link:hover {
+    color: var(--primary-dark) !important;
+    text-decoration: underline;
+}
+
+/* Formularios */
+.form-control {
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    color: var(--text-primary);
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.form-control:focus {
+    background: rgba(30, 41, 59, 0.8);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    color: var(--text-primary);
+}
+
+.form-control::placeholder {
+    color: var(--text-muted);
+    opacity: 0.8;
+}
+
+.form-label {
+    color: var(--text-primary);
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+/* Texto de ayuda en formularios */
+.form-text {
+    color: var(--text-secondary) !important;
+}
+
+.form-text small {
+    color: var(--text-secondary) !important;
+}
+
+/* Input groups */
+.input-group {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.input-group .form-control {
+    border-radius: 12px 0 0 12px;
+}
+
+.input-group .btn {
+    border-radius: 0 12px 12px 0;
+}
+
+/* Alertas */
+.alert {
+    border: none;
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    backdrop-filter: blur(10px);
+}
+
+.alert-success {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.alert-danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* Hero section para index */
+.hero-section {
+    padding: 4rem 0;
+    text-align: center;
+}
+
+.hero-title {
+    font-size: 3.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 1.5rem;
+}
+
+.hero-subtitle {
+    font-size: 1.25rem;
+    color: var(--text-secondary);
+    margin-bottom: 2.5rem;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    font-weight: 400;
+}
+
+/* Dashboard */
+.dashboard-header {
+    background: var(--gradient-card);
+    border-radius: 20px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
+}
+
+.dashboard-welcome {
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.dashboard-subtitle {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    font-weight: 400;
+}
+
+/* Navegación */
+.navbar {
+    backdrop-filter: blur(20px);
+    background: rgba(15, 23, 42, 0.8) !important;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.navbar-brand {
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: var(--text-primary) !important;
+}
+
+.nav-link {
+    color: var(--text-secondary) !important;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.nav-link:hover {
+    color: var(--text-primary) !important;
+    transform: translateY(-1px);
+}
+
+/* Utilidades */
+.text-gradient {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 600;
+}
+
+.text-secondary {
+    color: var(--text-secondary) !important;
+}
+
+.text-muted {
+    color: var(--text-muted) !important;
+}
+
+.glass-effect {
+    background: rgba(30, 41, 59, 0.3);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-effect h6,
+.glass-effect small,
+.glass-effect p {
+    color: var(--text-primary) !important;
+}
+
+.glass-effect .text-secondary {
+    color: var(--text-secondary) !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .hero-title {
+        font-size: 2.5rem;
+    }
+    
+    .card-header,
+    .card-body {
+        padding: 1.5rem;
+    }
+    
+    .dashboard-header {
+        padding: 1.5rem;
+    }
+}
+
+/* Efectos de carga */
+.loading {
+    animation: pulse 2s infinite;
+}
+
+/* Hover effects para enlaces */
+a {
+    transition: all 0.3s ease;
+}
+
+a:hover {
+    transform: translateY(-1px);
+}
+
+/* Mejoras para iconos de Bootstrap */
+.bi {
+    transition: all 0.3s ease;
+}
+
+/* Mejoras de legibilidad */
+.card-text {
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.card-title {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.list-group-item {
+    background: rgba(30, 41, 59, 0.3);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.list-group-item strong {
+    color: var(--text-primary);
+}
+
+/* Footer */
+footer {
+    color: var(--text-secondary);
+}
+
+footer .text-secondary {
+    color: var(--text-muted) !important;
+}
+
+/* Badges mejorados */
+.badge {
+    font-weight: 600;
+    padding: 0.5em 0.75em;
+}
+
+/* Alerts con mejor contraste */
+.alert {
+    color: var(--text-primary);
+}
+
+.alert-success {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.alert-danger {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.alert-info {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--primary-color);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+/* Inline password requirements block: hidden by default, expands with animation when .visible */
+.pw-inline {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 320ms cubic-bezier(.2,.8,.2,1), opacity 200ms ease-in-out, transform 240ms ease;
+    transform-origin: top;
+}
+
+.pw-inline.visible {
+    max-height: 400px; /* suficiente para mostrar las reglas */
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.pw-inline p.small {
+    margin-bottom: 0.5rem;
+}
+
+.pw-inline ul {
+    padding-left: 1rem;
+}
+
+.pw-inline li.text-success {
+    color: var(--accent-color) !important;
+}
+
+.pw-inline li.text-danger {
+    color: var(--danger-color) !important;
+}
